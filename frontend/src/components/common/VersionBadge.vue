@@ -319,6 +319,7 @@
 
                 <!-- Update button -->
                 <button
+                  v-if="allowSelfUpdate"
                   @click="handleUpdate"
                   :disabled="updating"
                   class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -375,7 +376,7 @@
                 </a>
 
                 <!-- Version rollback entry -->
-                <div class="border-t border-gray-100 pt-2 dark:border-dark-700">
+                <div v-if="allowSelfUpdate" class="border-t border-gray-100 pt-2 dark:border-dark-700">
                   <button
                     @click="toggleRollbackPanel"
                     class="group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 dark:text-dark-500 dark:hover:bg-dark-700/50 dark:hover:text-dark-300"
@@ -654,6 +655,10 @@ import Icon from '@/components/icons/Icon.vue'
 const GITHUB_REPO = 'Wei-Shaw/sub2api'
 // Docker Hub image published by CI (tags carry no "v" prefix, e.g. weishaw/sub2api:0.1.146)
 const DOCKER_IMAGE = 'weishaw/sub2api'
+
+// 聚蚁二开:在线自更新/回滚会下载上游官方二进制,覆盖二开 UI。
+// 入口封禁,升级统一走服务器 /opt/sub2api-tool/update-from-ghcr.sh;"发现新版本"提示保留。
+const allowSelfUpdate = false
 
 const { t } = useI18n()
 
