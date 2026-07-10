@@ -216,6 +216,9 @@
           </div>
         </div>
 
+        <!-- 账号蜂巢:服务账号池健康一览(聚蚁二开签名组件) -->
+        <HiveAccountGrid />
+
         <!-- Quick Actions -->
         <div class="card p-4">
           <div class="mb-3 flex items-center justify-between">
@@ -362,6 +365,7 @@ import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
+import HiveAccountGrid from '@/components/juyi/HiveAccountGrid.vue'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 
 import {
