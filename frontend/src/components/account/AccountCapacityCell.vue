@@ -55,7 +55,10 @@ const concurrencyClass = computed(() => {
   const current = currentConcurrency.value
   const max = props.account.concurrency
   if (current >= max) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-  if (current > 0) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  // 聚蚁二开:黄色只留给接近满载的真警示;常态活跃跟随主题色
+  if (max > 0 && current >= max * 0.8)
+    return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  if (current > 0) return 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
   return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
 })
 
