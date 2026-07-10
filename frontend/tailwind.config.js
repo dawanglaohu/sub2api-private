@@ -5,19 +5,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 主色调 - 聚蚁蜜琥珀(二开换肤:原 teal 全站替换)
+        // 主色调 - 聚蚁多主题:实际色值由 CSS 变量提供(见 src/styles/juyi.css),
+        // 默认蜜琥珀,可切换信息素青/靛夜/炭玫(data-jy-theme)
         primary: {
-          50: '#fffaeb',
-          100: '#fef1c7',
-          200: '#fce192',
-          300: '#facc4e',
-          400: '#f7b62b',
-          500: '#ed9e13',
-          600: '#d17e09',
-          700: '#ae5d0b',
-          800: '#8d4810',
-          900: '#743a11',
-          950: '#422005'
+          50: 'rgb(var(--jy-p-50) / <alpha-value>)',
+          100: 'rgb(var(--jy-p-100) / <alpha-value>)',
+          200: 'rgb(var(--jy-p-200) / <alpha-value>)',
+          300: 'rgb(var(--jy-p-300) / <alpha-value>)',
+          400: 'rgb(var(--jy-p-400) / <alpha-value>)',
+          500: 'rgb(var(--jy-p-500) / <alpha-value>)',
+          600: 'rgb(var(--jy-p-600) / <alpha-value>)',
+          700: 'rgb(var(--jy-p-700) / <alpha-value>)',
+          800: 'rgb(var(--jy-p-800) / <alpha-value>)',
+          900: 'rgb(var(--jy-p-900) / <alpha-value>)',
+          950: 'rgb(var(--jy-p-950) / <alpha-value>)'
         },
         // 信息素青:蚁径辅色(延续原 teal 认知)
         pheromone: {
@@ -55,19 +56,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: [
-          'system-ui',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Segoe UI',
-          'Roboto',
-          'Helvetica Neue',
-          'Arial',
-          'PingFang SC',
-          'Hiragino Sans GB',
-          'Microsoft YaHei',
-          'sans-serif'
-        ],
+        sans: 'var(--jy-font-sans)',
         mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
         display: [
           'Space Grotesk',
@@ -81,20 +70,20 @@ export default {
       boxShadow: {
         glass: '0 8px 32px rgba(0, 0, 0, 0.08)',
         'glass-sm': '0 4px 16px rgba(0, 0, 0, 0.06)',
-        glow: '0 0 20px rgba(237, 158, 19, 0.25)',
-        'glow-lg': '0 0 40px rgba(237, 158, 19, 0.35)',
+        glow: '0 0 20px rgb(var(--jy-p-500) / 0.25)',
+        'glow-lg': '0 0 40px rgb(var(--jy-p-500) / 0.35)',
         card: '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
         'card-hover': '0 10px 40px rgba(0, 0, 0, 0.08)',
         'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-primary': 'linear-gradient(135deg, #ed9e13 0%, #d17e09 100%)',
+        'gradient-primary': 'linear-gradient(135deg, rgb(var(--jy-p-500)) 0%, rgb(var(--jy-p-600)) 100%)',
         'gradient-dark': 'linear-gradient(135deg, #362e23 0%, #16110b 100%)',
         'gradient-glass':
           'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
         'mesh-gradient':
-          'radial-gradient(at 40% 20%, rgba(237, 158, 19, 0.12) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(44, 177, 166, 0.08) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(237, 158, 19, 0.08) 0px, transparent 50%)'
+          'radial-gradient(at 40% 20%, rgb(var(--jy-p-500) / 0.12) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(44, 177, 166, 0.08) 0px, transparent 50%), radial-gradient(at 0% 50%, rgb(var(--jy-p-500) / 0.08) 0px, transparent 50%)'
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
@@ -132,8 +121,8 @@ export default {
           '100%': { backgroundPosition: '200% 0' }
         },
         glow: {
-          '0%': { boxShadow: '0 0 20px rgba(237, 158, 19, 0.25)' },
-          '100%': { boxShadow: '0 0 30px rgba(237, 158, 19, 0.4)' }
+          '0%': { boxShadow: '0 0 20px rgb(var(--jy-p-500) / 0.25)' },
+          '100%': { boxShadow: '0 0 30px rgb(var(--jy-p-500) / 0.4)' }
         }
       },
       backdropBlur: {

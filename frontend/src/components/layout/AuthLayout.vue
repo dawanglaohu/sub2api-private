@@ -18,10 +18,9 @@
         class="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-300/10 blur-3xl"
       ></div>
 
-      <!-- Grid Pattern -->
-      <div
-        class="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
-      ></div>
+      <!-- 聚蚁:蜂窝纹理 + 蚁群行进动效 -->
+      <div class="juyi-hex-pattern absolute inset-0"></div>
+      <JuyiSwarmCanvas :density="40" :show-hex="true" />
     </div>
 
     <!-- Content Container -->
@@ -66,6 +65,7 @@
 import { computed, onMounted } from 'vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
+import JuyiSwarmCanvas from '@/components/juyi/JuyiSwarmCanvas.vue'
 
 const appStore = useAppStore()
 

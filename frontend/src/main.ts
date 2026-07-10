@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import i18n, { initI18n } from './i18n'
 import { useAppStore } from '@/stores/app'
+import { initJuyiAppearance } from '@/composables/useJuyiAppearance'
 import './style.css'
 import './styles/juyi.css'
 
@@ -18,6 +19,8 @@ function initThemeClass() {
 async function bootstrap() {
   // Apply theme class globally before app mount to keep all routes consistent.
   initThemeClass()
+  // 聚蚁外观(主题色/字体)在挂载前套用,避免闪烁
+  initJuyiAppearance()
 
   const app = createApp(App)
   const pinia = createPinia()

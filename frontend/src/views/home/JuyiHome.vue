@@ -1,10 +1,11 @@
 <template>
   <div class="relative flex min-h-screen flex-col overflow-hidden bg-[#FBF9F3] dark:bg-dark-950">
-    <!-- 背景:蜂窝纹理 + 蜜琥珀光晕 -->
+    <!-- 背景:蜂窝纹理 + 蜜琥珀光晕 + 蚁群行进动效 -->
     <div class="juyi-hex-pattern pointer-events-none absolute inset-0"></div>
     <div class="pointer-events-none absolute inset-0 overflow-hidden">
       <div class="absolute -right-40 -top-40 h-96 w-96 rounded-full bg-primary-400/15 blur-3xl"></div>
       <div class="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-primary-500/10 blur-3xl"></div>
+      <JuyiSwarmCanvas :density="52" :show-hex="false" :intensity="0.9" />
     </div>
 
     <!-- 顶栏 -->
@@ -25,6 +26,7 @@
 
         <div class="flex items-center gap-3">
           <LocaleSwitcher />
+          <JuyiAppearanceMenu direction="down" />
           <a
             v-if="docUrl"
             :href="docUrl"
@@ -300,6 +302,8 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import BrandMark from '@/components/brand/BrandMark.vue'
 import AntTrailPipeline from '@/components/home/AntTrailPipeline.vue'
+import JuyiSwarmCanvas from '@/components/juyi/JuyiSwarmCanvas.vue'
+import JuyiAppearanceMenu from '@/components/juyi/JuyiAppearanceMenu.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { sanitizeUrl } from '@/utils/url'
 

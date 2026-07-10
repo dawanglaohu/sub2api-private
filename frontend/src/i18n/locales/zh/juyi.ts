@@ -64,6 +64,22 @@ export default {
       manage: '管理账号',
       empty: '暂无服务账号，去添加第一个',
       more: '还有 {n} 个'
+    },
+    appearance: {
+      title: '外观',
+      theme: '主题色',
+      font: '字体',
+      themes: {
+        honey: '蜜琥珀',
+        pheromone: '信息素青',
+        nightfall: '靛夜',
+        ember: '炭玫'
+      },
+      fonts: {
+        default: '默认黑体',
+        serif: '衬线宋体',
+        mono: '等宽极客'
+      }
     }
   }
 }

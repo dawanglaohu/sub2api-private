@@ -65,6 +65,22 @@ export default {
       manage: 'Manage accounts',
       empty: 'No service accounts yet — add the first one',
       more: '{n} more'
+    },
+    appearance: {
+      title: 'Appearance',
+      theme: 'Theme color',
+      font: 'Font',
+      themes: {
+        honey: 'Honey Amber',
+        pheromone: 'Pheromone Teal',
+        nightfall: 'Nightfall Indigo',
+        ember: 'Ember Rose'
+      },
+      fonts: {
+        default: 'System Sans',
+        serif: 'Serif',
+        mono: 'Monospace'
+      }
     }
   }
 }
