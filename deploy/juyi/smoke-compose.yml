@@ -1,0 +1,48 @@
+# sub2api 隔离烟测栈:临时 pg/redis、无持久卷,绝不接触生产数据
+# 由 /opt/sub2api-tool/update-from-ghcr.sh smoke <tag> 调用
+services:
+  sub2api:
+    image: ${SMOKE_IMAGE}
+    container_name: sub2api-smoke
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${SMOKE_BIND:-127.0.0.1}:${SMOKE_PORT:-18080}:8080"
+    environment:
+      - AUTO_SETUP=true
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - SERVER_MODE=release
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=smoke
+      - DATABASE_PASSWORD=smokepass
+      - DATABASE_DBNAME=smoke
+      - DATABASE_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ADMIN_EMAIL=smoke@juyi.test
+      - ADMIN_PASSWORD=Smoke-Pass-123
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      - POSTGRES_USER=smoke
+      - POSTGRES_PASSWORD=smokepass
+      - POSTGRES_DB=smoke
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smoke -d smoke"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
