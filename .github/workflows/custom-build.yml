@@ -57,7 +57,7 @@ jobs:
               echo "::error::合并 ${LATEST} 到 custom 冲突。本地处理:git fetch upstream --tags && git checkout custom && git merge ${LATEST},解决冲突后 push。"
               exit 1
             fi
-            git push origin custom
+            git push origin custom "refs/tags/${LATEST}"
             echo "merged=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -71,7 +71,10 @@ jobs:
           if [ "${{ github.event_name }}" != "push" ] && [ "${{ steps.sync.outputs.merged }}" != "true" ] && [ "${FORCE_BUILD}" != "true" ]; then
             BUILD=false
           fi
-          VERSION=$(tr -d ' \n' < backend/cmd/server/VERSION)
+          # 版本号:优先取 HEAD 可达的最新 v* tag(上游发版先打 tag 后补 VERSION 文件,
+          # 文件会滞后一个版本),取不到再兜底读 VERSION 文件
+          VERSION=$(git describe --tags --match 'v*' --abbrev=0 2>/dev/null | sed 's/^v//')
+          [ -n "${VERSION}" ] || VERSION=$(tr -d ' \n' < backend/cmd/server/VERSION)
           SHA8=$(git rev-parse --short=8 HEAD)
           {
             echo "build=${BUILD}"
