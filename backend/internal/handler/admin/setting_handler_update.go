@@ -961,6 +961,17 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 					response.BadRequest(c, "Custom menu item markdown slug cannot be empty (use md:slug format)")
 					return
 				}
+			} else if strings.HasPrefix(urlTrimmed, "ext:") {
+				// 聚蚁二开:外链模式,URL = "ext:https://..." 前端渲染为新窗口跳转而非 iframe 嵌入
+				target := strings.TrimPrefix(urlTrimmed, "ext:")
+				if len(item.URL) > maxMenuItemURLLen {
+					response.BadRequest(c, "Custom menu item URL is too long (max 2048 characters)")
+					return
+				}
+				if err := config.ValidateAbsoluteHTTPURL(target); err != nil {
+					response.BadRequest(c, "Custom menu item ext: URL must wrap an absolute http(s) URL (ext:https://...)")
+					return
+				}
 			} else {
 				if urlTrimmed == "" {
 					response.BadRequest(c, "Custom menu item URL is required (use md:slug for markdown pages)")
