@@ -14,8 +14,8 @@
 
 ## 当前状态(2026-07-10)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-0102b9b1`,自报版本 0.1.150**(= 上游 v0.1.150 + 全部二开)
-- 回滚位:`custom-754469e4`(见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-a7d97445`,自报版本 0.1.150**(= 上游 v0.1.150 + 全部二开)
+- 回滚位:`custom-0102b9b1`(见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -75,6 +75,10 @@
 **R4(2026-07-10 晚)版本号标注修复**
 - 根因:上游发版"先打 tag 后补 VERSION 文件",tag 树里文件滞后一版(v0.1.150 树写 0.1.149)
 - CI decide 改为 `git describe` 最新可达 v* tag 定版,文件兜底;merge 时把 tag 推进私有仓库
+
+**R5(2026-07-11)后端放行 ext: 菜单前缀**
+- 管理台保存自定义菜单时后端校验拒绝 `ext:` 前缀(setting_handler_update.go),
+  已加分支:`ext:` 后必须是绝对 http(s) URL;至此 ext: 外链模式前后端闭环
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
