@@ -12,10 +12,10 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-07-10)
+## 当前状态(2026-07-12)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-a7d97445`,自报版本 0.1.150**(= 上游 v0.1.150 + 全部二开)
-- 回滚位:`custom-0102b9b1`(见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-80d5286c`,自报版本 0.1.151**(= 上游 v0.1.151 + main 若干未发版 fix + PR#4037/#4043 + 全部二开)
+- 回滚位:`custom-a7d97445`(见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -79,6 +79,17 @@
 **R5(2026-07-11)后端放行 ext: 菜单前缀**
 - 管理台保存自定义菜单时后端校验拒绝 `ext:` 前缀(setting_handler_update.go),
   已加分支:`ext:` 后必须是绝对 http(s) URL;至此 ext: 外链模式前后端闭环
+
+**R6(2026-07-12)首次直接合并上游 open PR(Grok 修复,未等上游发版)**
+- 需求:提前合入上游未合并的 PR#4037(Grok CLI 版本头)与 PR#4043(配额改走 xAI CLI 计费 API+免费号支持)
+- 做法(open PR 合并 SOP,与 tag 合并并列):`git fetch upstream pull/<N>/head:pr-<N>` 后
+  **`git merge --no-ff`(禁 cherry-pick!)**——保 PR head SHA 为祖先,上游正式合并后 tag 合并自动识别已合入
+- 两 PR 互相冲突 3 文件:取 4043 侧(其 setGrokCLICommonHeaders 是 applyGrokCLIHeaders 超集,
+  且 4037 的 UA sub2api-grok/1.0 会覆盖 4043 的 grok-shell UA 破坏免费号 CLI 代理识别);
+  4037 修复保留在 4043 未重构的路径(cc_pipeline/media/account_test)
+- 额外修了 4043 上游自带的 2 个红测试(/responses 路径 UA 断言仍是旧值 sub2api-grok/1.0 → grokCLIUserAgent)
+- 注意:合 open PR 会捎带其 base 上尚未发版的上游 main 提交(本次 17 个 fix),属预期
+- head SHA 对账:pr-4037=a02150a4、pr-4043=8ce18fda;合并提交 aee4bc64/80d5286c
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
