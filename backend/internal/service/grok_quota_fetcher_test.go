@@ -68,6 +68,26 @@ func TestGrokQuotaFetcherBuildUsageInfoFromSnapshot(t *testing.T) {
 	require.True(t, usage.UpdatedAt.Equal(time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)))
 }
 
+func TestGrokQuotaFetcherClearsRateLimitedStateAfterReset(t *testing.T) {
+	t.Parallel()
+
+	zero, limit := int64(0), int64(21)
+	reset := time.Now().Add(-time.Minute).Unix()
+	usage := NewGrokQuotaFetcher().BuildUsageInfo(&Account{
+		Platform: PlatformGrok,
+		Type:     AccountTypeOAuth,
+		Extra: map[string]any{grokQuotaSnapshotExtraKey: &xai.QuotaSnapshot{
+			StatusCode: http.StatusTooManyRequests,
+			Requests: &xai.QuotaWindow{Limit: &limit, Remaining: &zero, ResetUnix: &reset},
+			HeadersObserved: true,
+			UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+		}},
+	})
+
+	require.Empty(t, usage.ErrorCode)
+	require.Empty(t, usage.Error)
+}
+
 func TestGrokQuotaFetcherBuildUsageInfoFromNoHeadersProbe(t *testing.T) {
 	t.Parallel()
 

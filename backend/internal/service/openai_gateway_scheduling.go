@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -250,6 +251,12 @@ func shouldAutoPauseGrokAccountByQuota(account *Account) (bool, openAIQuotaAutoP
 	}
 	if grokQuotaRetryAfterActive(snapshot, now) {
 		return true, openAIQuotaAutoPauseDecision{window: "retry_after", threshold: 1, utilization: 1}
+	}
+	// Retry-After is the upstream's explicit retry boundary. Once it expires,
+	// allow one request to refresh a free account even when the accompanying
+	// remaining header was zero and did not include a reset timestamp.
+	if snapshot.StatusCode == http.StatusTooManyRequests && snapshot.RetryAfterSeconds != nil {
+		return false, openAIQuotaAutoPauseDecision{}
 	}
 	if paused, decision := shouldAutoPauseGrokQuotaWindow("requests", snapshot.Requests, now); paused {
 		return true, decision

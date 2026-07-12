@@ -3,14 +3,18 @@ import { flushPromises, mount } from '@vue/test-utils'
 import AccountUsageCell from '../AccountUsageCell.vue'
 import type { Account } from '@/types'
 
-const { getUsage } = vi.hoisted(() => ({
-  getUsage: vi.fn()
+const { getUsage, queryGrokQuota } = vi.hoisted(() => ({
+  getUsage: vi.fn(),
+  queryGrokQuota: vi.fn()
 }))
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
       getUsage
+    },
+    grok: {
+      queryQuota: queryGrokQuota
     }
   }
 }))
@@ -57,6 +61,7 @@ function makeAccount(overrides: Partial<Account>): Account {
 describe('AccountUsageCell', () => {
   beforeEach(() => {
     getUsage.mockReset()
+    queryGrokQuota.mockReset()
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -137,7 +142,10 @@ describe('AccountUsageCell', () => {
       },
       global: {
         stubs: {
-          UsageProgressBar: true,
+          UsageProgressBar: {
+            props: ['label', 'utilization', 'resetsAt'],
+            template: '<div class="usage-bar">{{ label }}|{{ utilization }}|{{ resetsAt }}</div>'
+          },
           AccountQuotaInfo: true
         }
       }
@@ -566,7 +574,7 @@ describe('AccountUsageCell', () => {
 		expect(badges.some(node => node.attributes('title') === 'usage.userBilled')).toBe(true)
   })
 
-  it('Grok OAuth 会展示本地 user billed 用量并保留超限百分比', async () => {
+  it('Grok OAuth 展示本地 user billed 用量且不再渲染旧请求额度条', async () => {
     getUsage.mockResolvedValue({
       grok_local_usage: {
         requests: 4,
@@ -611,11 +619,118 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).toContain('1.2K')
     expect(wrapper.text()).toContain('A $0.12')
     expect(wrapper.text()).toContain('U $0.34')
-    expect(wrapper.text()).toContain('admin.accounts.usageWindow.grokRequests|120|2026-07-09T16:00:00Z')
+    expect(wrapper.text()).not.toContain('admin.accounts.usageWindow.grokRequests|')
 
     const badges = wrapper.findAll('span[title]')
     expect(badges.some(node => node.attributes('title') === 'usage.accountBilled')).toBe(true)
     expect(badges.some(node => node.attributes('title') === 'usage.userBilled')).toBe(true)
+  })
+
+  it('Grok OAuth 收到 429 时提示免费额度耗尽', async () => {
+    getUsage.mockResolvedValue({
+      error: 'rate limited',
+      error_code: 'rate_limited',
+      grok_quota_snapshot_state: 'observed'
+    })
+
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: 3863, platform: 'grok', type: 'oauth', extra: {} })
+      },
+      global: {
+        stubs: { UsageProgressBar: true, AccountQuotaInfo: true, GrokQuotaProbeCell: true }
+      }
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('admin.accounts.grokQuotaExhausted')
+  })
+
+  it('Grok OAuth 已封禁时仍可探测并刷新用量状态', async () => {
+    getUsage
+      .mockResolvedValueOnce({ is_forbidden: true, grok_entitlement_status: 'forbidden' })
+      .mockResolvedValueOnce({ is_forbidden: false, grok_local_usage: null })
+    queryGrokQuota.mockResolvedValue({
+      source: 'billing_api',
+      credits: {
+        creditUsagePercent: 100,
+        currentPeriod: { end: '2026-07-17T09:18:09Z' }
+      },
+      monthly: {
+        used: { val: 4104 },
+        monthlyLimit: { val: 15000 },
+        billingPeriodEnd: '2026-08-01T00:00:00Z'
+      },
+      headers_observed: true,
+      reset_supported: false,
+      fetched_at: 1783749571
+    })
+
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: 3862, platform: 'grok', type: 'oauth', extra: {} })
+      },
+      global: {
+        stubs: {
+          UsageProgressBar: {
+            props: ['label', 'utilization', 'resetsAt'],
+            template: '<div class="usage-bar">{{ label }}|{{ utilization }}|{{ resetsAt }}</div>'
+          },
+          AccountQuotaInfo: true
+        }
+      }
+    })
+
+    await flushPromises()
+    expect(wrapper.text()).toContain('forbidden')
+    expect(wrapper.find('button').exists()).toBe(true)
+
+    await wrapper.find('button').trigger('click')
+    await flushPromises()
+
+    expect(getUsage).toHaveBeenCalledTimes(2)
+    expect(getUsage).toHaveBeenLastCalledWith(3862)
+    expect(queryGrokQuota).toHaveBeenCalledWith(3862)
+    expect(wrapper.text()).toContain('admin.accounts.usageWindow.grokPeriod|100|')
+    expect(wrapper.text()).toContain('admin.accounts.usageWindow.grokMonthly|27.36|')
+  })
+
+  it('Grok OAuth 首次加载 usage 时直接展示 Billing 额度', async () => {
+    getUsage.mockResolvedValue({
+      source: 'billing_api',
+      updated_at: '2026-07-11T05:59:31Z',
+      grok_credits: {
+        creditUsagePercent: 100,
+        currentPeriod: { end: '2026-07-17T09:18:09Z' }
+      },
+      grok_monthly: {
+        used: { val: 4104 },
+        monthlyLimit: { val: 15000 },
+        billingPeriodEnd: '2026-08-01T00:00:00Z'
+      }
+    })
+
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: 3863, platform: 'grok', type: 'oauth', extra: {} })
+      },
+      global: {
+        stubs: {
+          UsageProgressBar: {
+            props: ['label', 'utilization', 'resetsAt'],
+            template: '<div class="usage-bar">{{ label }}|{{ utilization }}|{{ resetsAt }}</div>'
+          },
+          AccountQuotaInfo: true
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(queryGrokQuota).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('admin.accounts.usageWindow.grokPeriod|100|')
+    expect(wrapper.text()).toContain('admin.accounts.usageWindow.grokMonthly|27.36|')
   })
 
   it('Key 账号在 today stats loading 时显示骨架屏', async () => {

@@ -75,6 +75,7 @@ func TestGrokOAuthHandlerQueryQuotaProbesUpstream(t *testing.T) {
 		Credentials: map[string]any{
 			"access_token": "access-token",
 			"expires_at":   time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			"user_id":      "user-42",
 		},
 	}}
 	upstream := &grokQuotaHandlerUpstream{resp: &http.Response{

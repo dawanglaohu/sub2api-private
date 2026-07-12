@@ -1198,10 +1198,13 @@ export default {
         claude: 'Claude',
         grokRequests: 'Req',
         grokTokens: 'Tok',
+        grokPeriod: 'Period',
+        grokMonthly: 'Month',
+        grokMonthlyUsage: 'Monthly usage {used}/{limit}',
         grokUnknown: 'Grok quota is unknown until the first upstream response includes xAI rate-limit headers.',
         grokRetryAfter: 'Retry after {time}',
         grokProbe: 'Probe',
-        grokProbeTooltip: 'Send a minimal xAI Responses probe and read quota headers',
+        grokProbeTooltip: 'Query the xAI Billing API for period and monthly quota',
         grokResetUnsupported: 'Reset unsupported',
         grokResetUnsupportedTooltip: 'xAI does not expose reset credits for Grok OAuth accounts',
         grokNoHeaders: 'No quota headers observed',
@@ -1250,6 +1253,7 @@ export default {
       linkCopied: 'Link Copied',
       needsReauth: 'Re-auth Required',
       rateLimited: 'Rate Limited',
+      grokQuotaExhausted: 'Grok free quota exhausted; waiting for the upstream reset',
       usageError: 'Fetch Error'
     },
 

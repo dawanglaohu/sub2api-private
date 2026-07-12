@@ -35,12 +35,32 @@
       </button>
     </div>
 
-    <div v-if="summary" class="text-[10px] text-gray-600 dark:text-gray-300">
-      {{ summary }}
-    </div>
     <div v-if="error" class="truncate text-[10px] text-red-600 dark:text-red-400" :title="error">
       {{ truncatedError }}
     </div>
+
+    <template v-if="data">
+      <UsageProgressBar
+        v-if="periodQuota"
+        :label="t('admin.accounts.usageWindow.grokPeriod')"
+        :utilization="periodQuota.utilization"
+        :resets-at="periodQuota.resetsAt"
+        color="indigo"
+      />
+      <UsageProgressBar
+        v-if="monthlyQuota"
+        :label="t('admin.accounts.usageWindow.grokMonthly')"
+        :utilization="monthlyQuota.utilization"
+        :resets-at="monthlyQuota.resetsAt"
+        color="emerald"
+      />
+      <div v-if="monthlyQuota" class="text-[10px] text-gray-500 dark:text-gray-400">
+        {{ t('admin.accounts.usageWindow.grokMonthlyUsage', {
+          used: formatAmount(monthlyQuota.used),
+          limit: formatAmount(monthlyQuota.limit)
+        }) }}
+      </div>
+    </template>
   </div>
 </template>
 
@@ -48,11 +68,16 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
-import type { GrokQuotaProbeResult, GrokQuotaWindow } from '@/api/admin/grok'
+import type { GrokQuotaProbeResult } from '@/api/admin/grok'
 import type { Account } from '@/types'
+import UsageProgressBar from './UsageProgressBar.vue'
 
 const props = defineProps<{
   account: Account
+  initialData?: GrokQuotaProbeResult | null
+}>()
+const emit = defineEmits<{
+  probed: [result: GrokQuotaProbeResult]
 }>()
 
 const { t } = useI18n()
@@ -60,7 +85,7 @@ const { t } = useI18n()
 const visible = computed(() => props.account.platform === 'grok' && props.account.type === 'oauth')
 const loading = ref(false)
 const error = ref<string | null>(null)
-const data = ref<GrokQuotaProbeResult | null>(null)
+const data = ref<GrokQuotaProbeResult | null>(props.initialData || null)
 
 const extractErrorMessage = (e: unknown): string => {
   const err = e as {
@@ -77,34 +102,29 @@ const extractErrorMessage = (e: unknown): string => {
   )
 }
 
-const formatWindow = (label: string, window?: GrokQuotaWindow | null): string | null => {
-  if (!window || window.limit == null || window.remaining == null) return null
-  return `${label} ${window.remaining}/${window.limit}`
-}
-
-const retryAfterLabel = computed(() => {
-  const seconds = data.value?.snapshot?.retry_after_seconds
-  if (seconds == null || seconds <= 0) return null
-  if (seconds < 60) return `${seconds}s`
-  return `${Math.ceil(seconds / 60)}m`
+const periodQuota = computed(() => {
+  const credits = data.value?.credits
+  if (credits?.creditUsagePercent == null) return null
+  return {
+    utilization: credits.creditUsagePercent,
+    resetsAt: credits.currentPeriod?.end || null
+  }
 })
 
-const summary = computed(() => {
-  const snapshot = data.value?.snapshot
-  if (!data.value) return ''
-  if (!snapshot) return t('admin.accounts.usageWindow.grokNoHeaders')
-  const parts = [
-    formatWindow(t('admin.accounts.usageWindow.grokRequests'), snapshot.requests),
-    formatWindow(t('admin.accounts.usageWindow.grokTokens'), snapshot.tokens)
-  ].filter(Boolean)
-  if (retryAfterLabel.value) {
-    parts.push(t('admin.accounts.usageWindow.grokRetryAfter', { time: retryAfterLabel.value }))
+const monthlyQuota = computed(() => {
+  const monthly = data.value?.monthly
+  const used = monthly?.used?.val
+  const limit = monthly?.monthlyLimit?.val
+  if (used == null || limit == null || limit <= 0) return null
+  return {
+    used,
+    limit,
+    utilization: (used / limit) * 100,
+    resetsAt: monthly?.billingPeriodEnd || null
   }
-  if (snapshot.entitlement_status) {
-    parts.push(snapshot.entitlement_status)
-  }
-  return parts.length > 0 ? parts.join(' | ') : t('admin.accounts.usageWindow.grokNoHeaders')
 })
+
+const formatAmount = (value: number) => new Intl.NumberFormat().format(value)
 
 const truncatedError = computed(() => {
   if (!error.value) return ''
@@ -116,7 +136,9 @@ const handleProbe = async () => {
   loading.value = true
   error.value = null
   try {
-    data.value = await adminAPI.grok.queryQuota(props.account.id)
+    const result = await adminAPI.grok.queryQuota(props.account.id)
+    data.value = result
+    emit('probed', result)
   } catch (e) {
     error.value = extractErrorMessage(e)
   } finally {
@@ -130,6 +152,13 @@ watch(
     data.value = null
     error.value = null
     loading.value = false
+  }
+)
+
+watch(
+  () => props.initialData,
+  (value) => {
+    if (value) data.value = value
   }
 )
 </script>

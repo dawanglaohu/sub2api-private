@@ -204,7 +204,9 @@ type UsageInfo struct {
 	GrokLastQuotaProbeAt   string           `json:"grok_last_quota_probe_at,omitempty"`
 	GrokLastHeadersSeenAt  string           `json:"grok_last_headers_seen_at,omitempty"`
 	GrokLastStatusCode     int              `json:"grok_last_status_code,omitempty"`
-	GrokLocalUsage         *WindowStats     `json:"grok_local_usage,omitempty"`
+	GrokLocalUsage         *WindowStats       `json:"grok_local_usage,omitempty"`
+	GrokCredits            *GrokBillingConfig `json:"grok_credits,omitempty"`
+	GrokMonthly            *GrokBillingConfig `json:"grok_monthly,omitempty"`
 
 	// Antigravity 账号级信息
 	SubscriptionTier    string `json:"subscription_tier,omitempty"`     // 归一化订阅等级: FREE/PRO/ULTRA/UNKNOWN
@@ -287,6 +289,7 @@ type AccountUsageService struct {
 	geminiQuotaService      *GeminiQuotaService
 	antigravityQuotaFetcher *AntigravityQuotaFetcher
 	grokQuotaFetcher        *GrokQuotaFetcher
+	grokQuotaService        *GrokQuotaService
 	openAIQuotaService      *OpenAIQuotaService
 	cache                   *UsageCache
 	identityCache           IdentityCache
@@ -301,6 +304,7 @@ func NewAccountUsageService(
 	geminiQuotaService *GeminiQuotaService,
 	antigravityQuotaFetcher *AntigravityQuotaFetcher,
 	grokQuotaFetcher *GrokQuotaFetcher,
+	grokQuotaService *GrokQuotaService,
 	openAIQuotaService *OpenAIQuotaService,
 	cache *UsageCache,
 	identityCache IdentityCache,
@@ -313,6 +317,7 @@ func NewAccountUsageService(
 		geminiQuotaService:      geminiQuotaService,
 		antigravityQuotaFetcher: antigravityQuotaFetcher,
 		grokQuotaFetcher:        grokQuotaFetcher,
+		grokQuotaService:        grokQuotaService,
 		openAIQuotaService:      openAIQuotaService,
 		cache:                   cache,
 		identityCache:           identityCache,
@@ -936,6 +941,20 @@ func (s *AccountUsageService) getGrokUsage(ctx context.Context, account *Account
 		return &UsageInfo{UpdatedAt: &now}, nil
 	}
 	usage := s.grokQuotaFetcher.BuildUsageInfo(account)
+	if s.grokQuotaService != nil && account != nil && account.Type == AccountTypeOAuth {
+		if result, err := s.grokQuotaService.ProbeUsage(ctx, account.ID); err == nil && result != nil {
+			usage = s.grokQuotaFetcher.BuildUsageInfo(&Account{
+				Platform: account.Platform,
+				Type:     account.Type,
+				Extra: map[string]any{
+					grokQuotaSnapshotExtraKey: result.Snapshot,
+				},
+			})
+			usage.Source = result.Source
+			usage.GrokCredits = result.Credits
+			usage.GrokMonthly = result.Monthly
+		}
+	}
 	if usage.GrokQuotaSnapshotState == "" {
 		if usage.ErrorCode == "quota_unknown" {
 			usage.GrokQuotaSnapshotState = "unknown_until_first_response"

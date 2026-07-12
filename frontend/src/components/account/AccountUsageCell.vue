@@ -354,6 +354,7 @@
         <span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
           {{ grokEntitlementLabel || t('admin.accounts.forbidden') }}
         </span>
+        <GrokQuotaProbeCell :account="account" :initial-data="grokProbeResult" @probed="handleGrokProbed" />
       </div>
       <div v-else-if="usageInfo" class="space-y-1">
         <div v-if="grokEntitlementLabel" class="mb-0.5">
@@ -381,35 +382,15 @@
             </span>
           </div>
         </div>
-        <UsageProgressBar
-          v-if="grokRequestQuotaBar"
-          :label="t('admin.accounts.usageWindow.grokRequests')"
-          :utilization="grokRequestQuotaBar.utilization"
-          :resets-at="grokRequestQuotaBar.resetsAt"
-          color="indigo"
-        />
-        <UsageProgressBar
-          v-if="grokTokenQuotaBar"
-          :label="t('admin.accounts.usageWindow.grokTokens')"
-          :utilization="grokTokenQuotaBar.utilization"
-          :resets-at="grokTokenQuotaBar.resetsAt"
-          color="emerald"
-        />
-        <div v-if="grokRetryAfterLabel" class="text-[10px] text-amber-600 dark:text-amber-400">
-          {{ t('admin.accounts.usageWindow.grokRetryAfter', { time: grokRetryAfterLabel }) }}
-        </div>
-        <div v-if="grokQuotaUnknown" class="text-[10px] text-gray-500 dark:text-gray-400">
-          {{ grokQuotaUnknownLabel }}
-        </div>
-        <div v-else-if="usageInfo.error" class="truncate text-xs text-amber-600 dark:text-amber-400 max-w-[200px]" :title="usageInfo.error">
+        <div v-if="usageInfo.error" class="truncate text-xs text-amber-600 dark:text-amber-400 max-w-[200px]" :title="usageInfo.error">
           {{ usageErrorLabel }}
         </div>
-        <div v-if="grokQuotaStatusLine" class="text-[10px] text-gray-500 dark:text-gray-400">
-          {{ grokQuotaStatusLine }}
-        </div>
-        <GrokQuotaProbeCell :account="account" />
+        <GrokQuotaProbeCell :account="account" :initial-data="grokProbeResult" @probed="handleGrokProbed" />
       </div>
-      <div v-else class="text-xs text-gray-400">-</div>
+      <div v-else class="space-y-1">
+        <div class="text-xs text-gray-400">-</div>
+        <GrokQuotaProbeCell :account="account" :initial-data="grokProbeResult" @probed="handleGrokProbed" />
+      </div>
     </template>
 
     <!-- Gemini platform: show quota + local usage window -->
@@ -600,10 +581,11 @@
 import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
+import type { GrokQuotaProbeResult } from '@/api/admin/grok'
 import type { Account, AccountUsageInfo, GeminiCredentials, WindowStats } from '@/types'
 import { buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { enqueueUsageRequest } from '@/utils/usageLoadQueue'
-import { formatCompactNumber, formatRelativeTime } from '@/utils/format'
+import { formatCompactNumber } from '@/utils/format'
 import UsageProgressBar from './UsageProgressBar.vue'
 import AccountQuotaInfo from './AccountQuotaInfo.vue'
 import OpenAIQuotaResetCell from './OpenAIQuotaResetCell.vue'
@@ -637,6 +619,7 @@ const loading = ref(false)
 const activeQueryLoading = ref(false)
 const error = ref<string | null>(null)
 const usageInfo = ref<AccountUsageInfo | null>(null)
+const grokProbeResult = ref<GrokQuotaProbeResult | null>(null)
 const rootRef = ref<HTMLElement | null>(null)
 const isDesktopViewport = ref(
   typeof window === 'undefined' ? true : window.matchMedia(desktopViewportQuery).matches
@@ -1029,68 +1012,11 @@ const geminiUsageBars = computed(() => {
   return bars
 })
 
-interface GrokQuotaBarInfo {
-  utilization: number
-  resetsAt: string | null
-}
-
-const makeGrokQuotaBar = (quota?: { limit?: number | null; remaining?: number | null; reset_at?: string | null } | null): GrokQuotaBarInfo | null => {
-  if (!quota || quota.limit == null || quota.remaining == null || quota.limit <= 0) return null
-  const used = Math.max(0, quota.limit - quota.remaining)
-  return {
-    utilization: (used / quota.limit) * 100,
-    resetsAt: quota.reset_at || null
-  }
-}
-
-const grokRequestQuotaBar = computed(() => makeGrokQuotaBar(usageInfo.value?.grok_request_quota))
-const grokTokenQuotaBar = computed(() => makeGrokQuotaBar(usageInfo.value?.grok_token_quota))
-const grokQuotaUnknown = computed(() => {
-  if (props.account.platform !== 'grok') return false
-  if (grokRequestQuotaBar.value || grokTokenQuotaBar.value) return false
-  return usageInfo.value?.grok_quota_snapshot_state !== 'observed'
-})
-const grokQuotaUnknownLabel = computed(() => {
-  return usageInfo.value?.grok_quota_snapshot_state === 'no_headers'
-    ? t('admin.accounts.usageWindow.grokNoHeaders')
-    : t('admin.accounts.usageWindow.grokUnknown')
-})
-const grokQuotaStatusLine = computed(() => {
-  if (props.account.platform !== 'grok') return null
-  const parts: string[] = []
-  const status = usageInfo.value?.grok_last_status_code
-  if (status) {
-    parts.push(t('admin.accounts.usageWindow.grokLastStatus', { status }))
-  }
-  if (usageInfo.value?.grok_last_quota_probe_at) {
-    parts.push(
-      t('admin.accounts.usageWindow.grokLastProbe', {
-        time: formatRelativeTime(usageInfo.value.grok_last_quota_probe_at)
-      })
-    )
-  }
-  if (usageInfo.value?.grok_last_headers_seen_at) {
-    parts.push(
-      t('admin.accounts.usageWindow.grokLastHeadersSeen', {
-        time: formatRelativeTime(usageInfo.value.grok_last_headers_seen_at)
-      })
-    )
-  }
-  return parts.length > 0 ? parts.join(' | ') : null
-})
 const grokLocalUsage = computed(() => usageInfo.value?.grok_local_usage || props.todayStats || null)
 const grokEntitlementLabel = computed(() => {
   const status = (usageInfo.value?.grok_entitlement_status || '').trim()
   return status || null
 })
-const grokRetryAfterLabel = computed(() => {
-  const seconds = usageInfo.value?.grok_retry_after_seconds
-  if (seconds == null || seconds <= 0) return null
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.ceil(seconds / 60)
-  return `${minutes}m`
-})
-
 const formatWindowRequests = (stats: WindowStats) => formatCompactNumber(stats.requests, { allowBillions: false })
 const formatWindowTokens = (stats: WindowStats) => formatCompactNumber(stats.tokens)
 const formatWindowCost = (stats: WindowStats) => stats.cost.toFixed(2)
@@ -1147,6 +1073,9 @@ const needsReauth = computed(() => !!usageInfo.value?.needs_reauth)
 // 降级错误标签（rate_limited / network_error）
 const usageErrorLabel = computed(() => {
   const code = usageInfo.value?.error_code
+  if (code === 'rate_limited' && props.account.platform === 'grok') {
+    return t('admin.accounts.grokQuotaExhausted')
+  }
   if (code === 'rate_limited') return t('admin.accounts.rateLimited')
   return t('admin.accounts.usageError')
 })
@@ -1185,7 +1114,21 @@ const isAnthropicOAuthOrSetupToken = computed(() => {
   return props.account.platform === 'anthropic' && (props.account.type === 'oauth' || props.account.type === 'setup-token')
 })
 
-const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?: boolean }) => {
+const applyGrokBilling = (result: AccountUsageInfo) => {
+  if (props.account.platform !== 'grok' || (!result.grok_credits && !result.grok_monthly)) return
+  grokProbeResult.value = {
+    source: 'billing_api',
+    credits: result.grok_credits || null,
+    monthly: result.grok_monthly || null,
+    headers_observed: true,
+    reset_supported: false,
+    fetched_at: result.updated_at
+      ? Math.floor(new Date(result.updated_at).getTime() / 1000)
+      : Math.floor(Date.now() / 1000)
+  }
+}
+
+const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?: boolean; silent?: boolean }) => {
   if (!shouldFetchUsage.value) return
 
   // Check cache
@@ -1193,12 +1136,13 @@ const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?
     const cached = _usageCache.get(props.account.id)
     if (cached && Date.now() - cached.ts < USAGE_CACHE_TTL) {
       usageInfo.value = cached.data
+      applyGrokBilling(cached.data)
       loading.value = false
       return
     }
   }
 
-  loading.value = true
+  if (!options?.silent) loading.value = true
   error.value = null
 
   try {
@@ -1208,6 +1152,7 @@ const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?
     const result = await enqueueUsageRequest(props.account, fetchFn)
     if (!unmounted.value) {
       usageInfo.value = result
+      applyGrokBilling(result)
       _usageCache.set(props.account.id, { data: result, ts: Date.now() })
     }
   } catch (e: any) {
@@ -1216,8 +1161,16 @@ const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?
       console.error('Failed to load usage:', e)
     }
   } finally {
-    if (!unmounted.value) loading.value = false
+    if (!unmounted.value && !options?.silent) loading.value = false
   }
+}
+
+const handleGrokProbed = (result: GrokQuotaProbeResult) => {
+  grokProbeResult.value = result
+  _usageCache.delete(props.account.id)
+  loadUsage({ bypassCache: true, silent: true }).catch((e) => {
+    console.error('Failed to refresh Grok usage after quota probe:', e)
+  })
 }
 
 const flushPendingAutoLoad = () => {

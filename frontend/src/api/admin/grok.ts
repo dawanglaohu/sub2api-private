@@ -62,13 +62,27 @@ export interface GrokQuotaSnapshot {
 }
 
 export interface GrokQuotaProbeResult {
-  source: 'active_probe'
-  model: string
+	source: 'billing_api'
+	model?: string
   snapshot?: GrokQuotaSnapshot | null
+	credits?: GrokBillingConfig | null
+	monthly?: GrokBillingConfig | null
   status_code?: number
   headers_observed: boolean
   reset_supported: boolean
   fetched_at: number
+}
+
+export interface GrokBillingConfig {
+	currentPeriod?: { type?: string; start?: string; end?: string } | null
+	creditUsagePercent?: number | null
+	monthlyLimit?: { val: number } | null
+	used?: { val: number } | null
+	onDemandCap?: { val: number } | null
+	onDemandUsed?: { val: number } | null
+	prepaidBalance?: { val: number } | null
+	billingPeriodStart?: string
+	billingPeriodEnd?: string
 }
 
 export interface GrokQuotaResetResult {

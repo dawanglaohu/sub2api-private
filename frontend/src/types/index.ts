@@ -1022,8 +1022,20 @@ export interface GrokQuotaWindow {
   reset_at?: string
 }
 
+export interface GrokBillingConfig {
+  currentPeriod?: { type?: string; start?: string; end?: string } | null
+  creditUsagePercent?: number | null
+  monthlyLimit?: { val: number } | null
+  used?: { val: number } | null
+  onDemandCap?: { val: number } | null
+  onDemandUsed?: { val: number } | null
+  prepaidBalance?: { val: number } | null
+  billingPeriodStart?: string
+  billingPeriodEnd?: string
+}
+
 export interface AccountUsageInfo {
-  source?: 'passive' | 'active'
+  source?: 'passive' | 'active' | 'billing_api'
   updated_at: string | null
   five_hour: UsageProgress | null
   seven_day: UsageProgress | null
@@ -1041,6 +1053,8 @@ export interface AccountUsageInfo {
   grok_retry_after_seconds?: number | null
   grok_entitlement_status?: string
   grok_quota_snapshot_state?: string
+  grok_credits?: GrokBillingConfig | null
+  grok_monthly?: GrokBillingConfig | null
   grok_last_quota_probe_at?: string
   grok_last_headers_seen_at?: string
   grok_last_status_code?: number

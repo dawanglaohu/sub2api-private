@@ -67,7 +67,19 @@ func (f *GrokQuotaFetcher) BuildUsageInfo(account *Account) *UsageInfo {
 			usage.GrokEntitlementStatus = "forbidden"
 		}
 	case 429:
-		usage.ErrorCode = "rate_limited"
+		// A historical 429 is no longer an exhausted state once Retry-After or
+		// the upstream quota reset has elapsed. The scheduler uses the same rule.
+		paused, _ := shouldAutoPauseGrokAccountByQuota(&Account{
+			Platform: PlatformGrok,
+			Type:     AccountTypeOAuth,
+			Extra: map[string]any{
+				grokQuotaSnapshotExtraKey: snapshot,
+			},
+		})
+		if paused {
+			usage.ErrorCode = "rate_limited"
+			usage.Error = "Grok free quota exhausted; waiting for the upstream reset"
+		}
 	}
 	return usage
 }
