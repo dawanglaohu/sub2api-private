@@ -14,8 +14,8 @@
 
 ## 当前状态(2026-07-12)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-80d5286c`,自报版本 0.1.151**(= 上游 v0.1.151 + main 若干未发版 fix + PR#4037/#4043 + 全部二开)
-- 回滚位:`custom-a7d97445`(见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-57c3e2dd`,自报版本 0.1.151**(= 上游 v0.1.151 + main 若干未发版 fix + PR#4037/#4043/#4009 + 全部二开)
+- 回滚位:`custom-80d5286c`(见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -90,6 +90,23 @@
 - 额外修了 4043 上游自带的 2 个红测试(/responses 路径 UA 断言仍是旧值 sub2api-grok/1.0 → grokCLIUserAgent)
 - 注意:合 open PR 会捎带其 base 上尚未发版的上游 main 提交(本次 17 个 fix),属预期
 - head SHA 对账:pr-4037=a02150a4、pr-4043=8ce18fda;合并提交 aee4bc64/80d5286c
+
+**R7(2026-07-12)添加 Grok 账户 OAuth 报错排查 + 合并 PR#4009、放弃 #3541**
+- 症状:管理台添加 Grok 账户,在 grok.com 授权页遇 Cloudflare "origin invalid response"(**xAI 侧源站问题,非本站**);
+  随后 exchange-code 必然 502,根因 xAI 返回 `400 invalid_grant`(授权未真正完成,code 无效)。
+  日志锚点:`grok_oauth_handler.go:72 GROK_OAUTH_TOKEN_EXCHANGE_FAILED`。上游无专项修复 PR。
+  **处置**:授权页报错属 xAI 风控/源站抖动——换网络/浏览器/时段重试,或给账户配代理;每次只生成一次授权链接,
+  code 一次性且时效短,拿到立即贴回。后端逻辑无 bug(PKCE+state 校验完整)
+- **#3541 放弃**:其功能(Grok 账号测试路由 xAI)上游已另行实现(testGrokAccountConnection 已在),硬合必大冲突
+- **#4009 合入**(head 4641533e,合并提交 57c3e2dd):xAI API key 账号、OAuth 强制路由 CLI proxy(GetGrokBaseURL)、
+  **传输层统一 CLI 身份头 applyGrokCLIProxyHeaders(http_upstream.go,按 host=cli-chat-proxy.grok.com 生效,
+  UA=xai-grok-workspace/<v>,env XAI_GROK_CLI_VERSION 可覆盖版本)**、additional_tools 过滤、别名定价、
+  UseKeyModal CLI/OpenCode 配置生成;go.mod 提升 x/mod 为直接依赖(版本未变,go.sum 不动)。
+  它修了 #3952/#4079 等"添加后测试报 426 版本头"问题——与添加时的 OAuth 授权报错是两回事
+- 冲突 3 文件全取 HEAD:#4009 的配额条改进作用于 #4043 已删除的旧 UI(bars→billing credits 展示),丢弃;
+  quota 测试 URL 修正已被 #4043 重写涵盖。**头体系运行时以传输层为准**(service 层两套头对 CLI proxy 流量被覆盖)
+- 教训:合 PR 前先查它要改的功能是否已被上游别的提交实现(#3541);auto-merge 成功≠语义正确,须逐文件 net-diff 审查;
+  **用户报"登录错误"要先问清是哪个登录**(站内登录 vs 第三方 OAuth 授权页)
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
