@@ -14,8 +14,8 @@
 
 ## 当前状态(2026-07-13)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-a4bd64d9`,自报版本 0.1.153**(= 上游 v0.1.153(已收编 #4037/#4009) + PR#4043(上游未合) + 全部二开)
-- 回滚位:`custom-57c3e2dd`(见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-2f7ed6df`,自报版本 0.1.153**(= 上游 v0.1.153(已收编 #4037/#4009) + PR#4043(上游未合) + 全部二开)
+- 回滚位:`custom-a4bd64d9`(见 `/opt/sub2api-tool/previous-image`;a4bd64d9 与 2f7ed6df 代码相同,前者版本号误标 0.1.151)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -34,6 +34,8 @@
    出事:`update-from-ghcr.sh rollback`(可再次执行切回)。`status` 看全景。
 3. **merge 冲突时**(CI 红灯):本地 `git fetch upstream --tags && git checkout custom && git merge v0.1.x`,
    解决冲突(我们的改动见下方"二开清单",冲突多半在 tailwind.config/main.ts/两个 DashboardView/AppSidebar/VersionBadge),push 即重新构建。
+   **手动合并后必须把新 tag 也推进私有仓库**(`git push private v0.1.x`),否则 CI 的 `git describe`
+   取不到新 tag,镜像会自报旧版本号(R8 踩坑:合并 153 只推分支没推 tag → 镜像自报 0.1.151)。
 4. 镜像标签:`custom-<sha8>`(不可变,生产用)/ `v<版本>-custom` / `custom-latest`(移动,生产禁用)。
 
 ## 铁律
