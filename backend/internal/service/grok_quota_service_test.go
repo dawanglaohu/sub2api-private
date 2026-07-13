@@ -22,6 +22,9 @@ type grokQuotaAccountRepo struct {
 	lastTempUnschedID     int64
 	lastTempUnschedUntil  time.Time
 	lastTempUnschedReason string
+	rateLimitedCalls      int
+	lastRateLimitedID     int64
+	lastRateLimitResetAt  time.Time
 }
 
 func (r *grokQuotaAccountRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
@@ -30,6 +33,17 @@ func (r *grokQuotaAccountRepo) UpdateExtra(_ context.Context, id int64, updates 
 	}
 	r.updates[id] = updates
 	return nil
+}
+
+func (r *grokQuotaAccountRepo) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {
+	r.rateLimitedCalls++
+	r.lastRateLimitedID = id
+	r.lastRateLimitResetAt = resetAt
+	return nil
+}
+
+func (r *grokQuotaAccountRepo) SetRateLimitedIfLater(ctx context.Context, id int64, resetAt time.Time) error {
+	return r.SetRateLimited(ctx, id, resetAt)
 }
 
 func (r *grokQuotaAccountRepo) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
@@ -129,6 +143,9 @@ func TestGrokQuotaServiceFreeBillingPreservesExhaustedPassiveSnapshot(t *testing
 	require.EqualValues(t, 0, *result.Snapshot.Requests.Remaining)
 	require.True(t, result.HeadersObserved)
 	require.NotEmpty(t, result.Snapshot.LastProbeAt)
+	require.Equal(t, 1, repo.rateLimitedCalls)
+	require.Equal(t, account.ID, repo.lastRateLimitedID)
+	require.WithinDuration(t, time.Unix(reset, 0), repo.lastRateLimitResetAt, time.Minute)
 }
 
 func TestGrokQuotaServiceProbeUsageIgnoresAccountGrokMapping(t *testing.T) {

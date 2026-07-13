@@ -103,7 +103,14 @@ func (s *GrokQuotaService) ProbeUsage(ctx context.Context, accountID int64) (*Gr
 			snapshot = observed
 		}
 	}
+	resetAt, limited := grokRateLimitResetAt(snapshot, time.Now())
+	if limited {
+		normalizeGrokExhaustedWindowResets(snapshot, resetAt, time.Now())
+	}
 	_ = s.accountRepo.UpdateExtra(ctx, account.ID, map[string]any{grokQuotaSnapshotExtraKey: snapshot})
+	if limited {
+		persistGrokRateLimit(ctx, s.accountRepo, account, resetAt)
+	}
 	return &GrokQuotaProbeResult{
 		Source: "billing_api", Snapshot: snapshot, Credits: credits, Monthly: monthly,
 		StatusCode: status, HeadersObserved: snapshot.HeadersObserved, ResetSupported: false,
