@@ -12,10 +12,10 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-07-12)
+## 当前状态(2026-07-13)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-57c3e2dd`,自报版本 0.1.151**(= 上游 v0.1.151 + main 若干未发版 fix + PR#4037/#4043/#4009 + 全部二开)
-- 回滚位:`custom-80d5286c`(见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-a4bd64d9`,自报版本 0.1.153**(= 上游 v0.1.153(已收编 #4037/#4009) + PR#4043(上游未合) + 全部二开)
+- 回滚位:`custom-57c3e2dd`(见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -107,6 +107,21 @@
   quota 测试 URL 修正已被 #4043 重写涵盖。**头体系运行时以传输层为准**(service 层两套头对 CLI proxy 流量被覆盖)
 - 教训:合 PR 前先查它要改的功能是否已被上游别的提交实现(#3541);auto-merge 成功≠语义正确,须逐文件 net-diff 审查;
   **用户报"登录错误"要先问清是哪个登录**(站内登录 vs 第三方 OAuth 授权页)
+
+**R8(2026-07-13)Grok RT 导入号 403 排查(账号侧结论) + 合并 v0.1.153、舍弃 #4037/#4009 私有适配**
+- 403 "chat endpoint denied"/"Access denied." 排查闭环:**CLI 头已带齐且 xAI 确认收到**(错误回显 x_xai_token_auth=xai-grok-cli);
+  x-userid 加与不加无差;IP 未被封(本地/服务器无认证探测形态一致);上游无同类集体反馈。
+  实锤:该 RT 后被 xAI 报 "Refresh token has been revoked",AT 刷出 29 分钟即整体失效(连 billing 都 401)——
+  **外部来源共享 RT 被另一方 rotate/风控,账号侧问题,sub2api 无可修**。处置:自有订阅号走 OAuth 或官方 CLI 导出 RT
+- 诊断工具箱:错误回显判头达没达;RT 验证日志锚点 grok_oauth_handler.go:109;DB 查 credentials 键结构/scope;
+  服务器 curl 矩阵(带/不带头 × responses/billing/user)分层定位
+- **v0.1.153 合并(合并提交 a4bd64d9)**:上游已收编 #4009(rebase 版,merge b73d8c3e)与 #4037 内容 →
+  这两个 PR 涉及区域**全取上游原版,舍弃我们全部预合并适配**(含 R6 改的 2 处 UA 断言);
+  **#4043 上游未合,保留 ours 4 文件**(grok_quota_service.go/_test、AccountUsageCell.vue/spec),
+  并移植上游 1dedb209(配额耗尽持久化为限流)进 billing 版 ProbeUsage+mock 断言
+- **提前合 open PR 的代价教训**:PR 被作者 rebase 后上游正式合并,tag 合并必冲突(本次 11 文件,CI 红灯一天);
+  硬校验法:`git diff v0.1.153..custom --name-only` 必须精确等于 二开清单+未合 PR 净文件+ext:,多一个都是残差;
+  取 ours 前必查 `git log v0.1.151..v0.1.153 -- <file>` 有无第三方提交会被覆盖(本次差点丢 1dedb209)
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
