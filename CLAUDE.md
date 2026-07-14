@@ -33,10 +33,14 @@
    /opt/sub2api-tool/update-from-ghcr.sh switch custom-<sha8>   # 改 .env SUB2API_IMAGE + compose up -d
    ```
    出事:`update-from-ghcr.sh rollback`(可再次执行切回)。`status` 看全景。
-3. **merge 冲突时**(CI 红灯):本地 `git fetch upstream --tags && git checkout custom && git merge v0.1.x`,
-   解决冲突(我们的改动见下方"二开清单",冲突多半在 tailwind.config/main.ts/两个 DashboardView/AppSidebar/VersionBadge),push 即重新构建。
-   **手动合并后必须把新 tag 也推进私有仓库**(`git push private v0.1.x`),否则 CI 的 `git describe`
-   取不到新 tag,镜像会自报旧版本号(R8 踩坑:合并 153 只推分支没推 tag → 镜像自报 0.1.151)。
+3. **merge 冲突时**(CI 红灯):本地 `git fetch upstream --tags && git checkout custom && git merge v0.1.x`。
+   解冲突唯一原则:**二开清单文件取 ours,其余一切取 theirs**(setting_handler_update.go 手工保留 ext: 11 行)。
+   解完硬校验:`git diff v0.1.x --name-only --staged` 必须只剩二开清单+setting_handler_update.go,
+   多出的文件 `git checkout v0.1.x -- <f>` 强制对齐。前端 `pnpm run build` 过了再提交。
+   **推送顺序铁律:先 `git push private v0.1.x`(tag),后 `git push private custom`(分支)**——
+   分支 push 立刻触发构建,tag 晚到 CI 的 `git describe` 就取旧 tag,镜像自报旧版本号
+   (R8/R9 各踩一次;标错了去 Actions 手动 Run workflow 勾 force_build 重建)。
+   部署前可验版本:`docker run --rm --entrypoint sh <镜像> -c 'strings /app/sub2api | grep -xE "0\.1\.[0-9]+"'`。
 4. 镜像标签:`custom-<sha8>`(不可变,生产用)/ `v<版本>-custom` / `custom-latest`(移动,生产禁用)。
 
 ## 铁律
