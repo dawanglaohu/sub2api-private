@@ -12,10 +12,11 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-07-13)
+## 当前状态(2026-07-14)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-2f7ed6df`,自报版本 0.1.153**(= 上游 v0.1.153(已收编 #4037/#4009) + PR#4043(上游未合) + 全部二开)
-- 回滚位:`custom-a4bd64d9`(见 `/opt/sub2api-tool/previous-image`;a4bd64d9 与 2f7ed6df 代码相同,前者版本号误标 0.1.151)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-ad73cc6a`,自报版本 0.1.155**(= 上游 v0.1.155 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:) 共 55 文件,硬校验口径见 R8
+- 回滚位:`custom-2f7ed6df`(见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
