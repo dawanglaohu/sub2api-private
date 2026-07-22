@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 const dir = dirname(fileURLToPath(import.meta.url))
 const sidebarSource = readFileSync(resolve(dir, '../AppSidebar.vue'), 'utf8')
 const homeViewSource = readFileSync(resolve(dir, '../../../views/HomeView.vue'), 'utf8')
+const juyiHomeSource = readFileSync(resolve(dir, '../../../views/home/JuyiHome.vue'), 'utf8')
 const keyUsageViewSource = readFileSync(resolve(dir, '../../../views/KeyUsageView.vue'), 'utf8')
 
 describe('site_logo sanitization', () => {
@@ -15,16 +16,18 @@ describe('site_logo sanitization', () => {
     expect(sidebarSource).toContain('sanitizeUrl(appStore.siteLogo')
   })
 
-  it('HomeView applies sanitizeUrl to siteLogo', () => {
-    expect(homeViewSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo')
+  it('HomeView delegates logo rendering to JuyiHome, which sanitizes siteLogo', () => {
+    expect(homeViewSource).toContain("import JuyiHome from '@/views/home/JuyiHome.vue'")
+    expect(homeViewSource).toContain('<JuyiHome v-else />')
+    expect(juyiHomeSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo')
   })
 
   it('KeyUsageView applies sanitizeUrl to siteLogo', () => {
     expect(keyUsageViewSource).toContain('sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo')
   })
 
-  it('all three pass allowRelative and allowDataUrl options', () => {
-    for (const src of [sidebarSource, homeViewSource, keyUsageViewSource]) {
+  it('all three logo rendering surfaces pass allowRelative and allowDataUrl options', () => {
+    for (const src of [sidebarSource, juyiHomeSource, keyUsageViewSource]) {
       expect(src).toContain('allowRelative: true')
       expect(src).toContain('allowDataUrl: true')
     }
