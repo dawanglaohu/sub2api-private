@@ -12,11 +12,11 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-07-14)
+## 当前状态(2026-07-26)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-ad73cc6a`,自报版本 0.1.155**(= 上游 v0.1.155 + 全部二开,**无任何 Grok PR 私货**)
-- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:) 共 55 文件,硬校验口径见 R8
-- 回滚位:`custom-2f7ed6df`(见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-3f4bcc43`,自报版本 0.1.165**(= 上游 v0.1.165 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(2026-07-26 实测 51 文件)
+- 回滚位:`custom-8057dced`(v0.1.163,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -129,6 +129,12 @@
 - **提前合 open PR 的代价教训**:PR 被作者 rebase 后上游正式合并,tag 合并必冲突(本次 11 文件,CI 红灯一天);
   硬校验法:`git diff v0.1.153..custom --name-only` 必须精确等于 二开清单+未合 PR 净文件+ext:,多一个都是残差;
   取 ours 前必查 `git log v0.1.151..v0.1.153 -- <file>` 有无第三方提交会被覆盖(本次差点丢 1dedb209)
+
+**R10(2026-07-26)合并 v0.1.165(常规更新)**
+- 7/25、7/26 每日 CI 连续红灯,根因:上游 v0.1.164 新增 composite(组合订阅)平台,在 GroupBadge.vue
+  的平台着色分支加了 cyan 配色,与 R3「分组徽章统一 primary」冲突。取 ours(我们本就不按平台着色,
+  composite 自然落入统一 primary,无功能损失);其余全部自动合并,ext: 11 行完好
+- 硬校验:合并前后 `git diff v0.1.x --name-only` 清单逐字一致(51 文件);烟测/备份/切换按 SOP 走完
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
