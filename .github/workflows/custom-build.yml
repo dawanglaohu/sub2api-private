@@ -3,6 +3,7 @@ name: Custom Build
 # 二开镜像流水线:
 # - push custom     -> 直接构建推送 GHCR
 # - 每日定时/手动    -> 检查上游新 release,merge 进 custom 后构建;无新版则跳过
+#                      (合并时保留二开自己的 .github/workflows/,详见 sync 步骤注释)
 # 冲突时本流程失败,需本地解决:git fetch upstream --tags && git merge <tag>
 on:
   push:
@@ -53,11 +54,22 @@ jobs:
             echo "custom already contains ${LATEST}, nothing to sync"
             echo "merged=false" >> "$GITHUB_OUTPUT"
           else
-            if ! git merge --no-edit "${LATEST}"; then
+            BEFORE=$(git rev-parse HEAD)
+            if ! git merge --no-commit --no-ff "${LATEST}"; then
               echo "::error::合并 ${LATEST} 到 custom 冲突。本地处理:git fetch upstream --tags && git checkout custom && git merge ${LATEST},解决冲突后 push。"
               exit 1
             fi
-            git push origin custom "refs/tags/${LATEST}"
+            # GITHUB_TOKEN 无权推送触碰 .github/workflows/ 的提交(GitHub 硬限制,
+            # permissions 里也没有可开的 workflows 项),上游一改 CI 文件这步就会
+            # remote rejected。二开分支自带 CI 配置,故合并时保留 custom 侧
+            # workflows,丢弃上游对该目录的改动与新增。
+            git checkout "${BEFORE}" -- .github/workflows/
+            git diff --cached -z --name-only --diff-filter=A -- .github/workflows/ \
+              | xargs -0 -r git rm -f -q --
+            git commit --no-edit
+            # 同理不推上游 tag:其指向的上游提交同样含 workflows 改动,会被一并拒绝。
+            # 版本号由 Decide build 从本地 fetch 下来的 tag 解析,不依赖远端存在该 tag。
+            git push origin custom
             echo "merged=true" >> "$GITHUB_OUTPUT"
           fi
 
