@@ -12,11 +12,11 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-07-26)
+## 当前状态(2026-08-08)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-3f4bcc43`,自报版本 0.1.165**(= 上游 v0.1.165 + 全部二开,**无任何 Grok PR 私货**)
-- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(2026-07-26 实测 51 文件)
-- 回滚位:`custom-8057dced`(v0.1.163,见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-8b52d224`,自报版本 0.1.172**(= 上游 v0.1.172 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(**2026-08-08 实测 52 文件**,清单与 v0.1.168 时逐字一致)
+- 回滚位:`custom-85eecba1`(v0.1.168,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -135,6 +135,22 @@
   的平台着色分支加了 cyan 配色,与 R3「分组徽章统一 primary」冲突。取 ours(我们本就不按平台着色,
   composite 自然落入统一 primary,无功能损失);其余全部自动合并,ext: 11 行完好
 - 硬校验:合并前后 `git diff v0.1.x --name-only` 清单逐字一致(51 文件);烟测/备份/切换按 SOP 走完
+
+**R11(2026-08-08)合并 v0.1.172(常规更新,接手上次会话遗留的半成品 merge)**
+- 现场:CI 自 8/1 起连续 8 天红灯(全部卡在 "Sync latest upstream release into custom" = merge 冲突),
+  生产停在 v0.1.168。**本地工作区留着上次会话未提交的 merge**(`git status` 显示 "All conflicts fixed
+  but you are still merging",MERGE_HEAD = v0.1.172 的 tag object 61ba94d2,542 文件已暂存)
+- **接手半成品 merge 的验收姿势**(不要重做,先证明它是对的):① `git tag --points-at $(cat .git/MERGE_HEAD)`
+  确认合的是哪个 tag(annotated tag 的 MERGE_HEAD 是 tag object sha,不等于 `git rev-list -n1 <tag>`);
+  ② 硬校验清单 `git diff <tag> --name-only --staged`;③ **与上一版基线做 comm 对比**
+  (`git diff v0.1.168 <上一次合并提交> --name-only` vs 本次清单)——比记数字更可靠,本次 52=52 逐字一致;
+  ④ `git log <旧tag>..<新tag> --name-only -- <清单文件>` 列出上游动过的二开文件(本次 8 个),
+  逐个看净差异形态是否仍是"纯二开"(ext: 11 行 / 颜色收编 1 行 / HomeView 壳化 -689 行 / backend-ci -3 行)
+- 上游本区间 203 个提交,`v0.1.167` 上游跳号不存在;私有仓库缺 166/168/169/170/171/172 六个 tag,一次补推
+- 踩坑:`git push private custom` 首次 `schannel: failed to receive handshake` (SSL 抖动),重试即过;
+  推送顺序铁律照旧(tag 先→分支后),镜像自报版本实测 0.1.172 ✅
+- 落地:CI run 31242238920 绿灯 → 镜像 `custom-8b52d224` → pull/版本验证/smoke/备份(280M)/switch 全过,
+  vvct.site 200、title「聚蚁」、logo.svg 在位,日志无 error
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
