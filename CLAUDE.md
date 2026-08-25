@@ -12,11 +12,11 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-08-08)
+## 当前状态(2026-08-13)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-8b52d224`,自报版本 0.1.172**(= 上游 v0.1.172 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-5a262630`,自报版本 0.1.176**(= 上游 v0.1.176 + 全部二开,**无任何 Grok PR 私货**;CI 全自动合并,无冲突)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(**2026-08-08 实测 52 文件**,清单与 v0.1.168 时逐字一致)
-- 回滚位:`custom-85eecba1`(v0.1.168,见 `/opt/sub2api-tool/previous-image`)
+- 回滚位:`custom-8b52d224`(v0.1.172,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -25,6 +25,9 @@
 
 1. **CI 自动**:每日 UTC 02:23(北京 10:23)自动 merge 上游最新 release tag → 构建推送镜像。
    手动触发:GitHub Actions → "Custom Build" → Run workflow(force_build 可强制)。
+   **找新镜像标签认准 GHCR 版本列表(`/user/packages/container/sub2api/versions`,含 `v0.1.x-custom` 别名),
+   别拿 CI run 的 `head_sha` 去猜**——run 的 head_sha 是触发时的 sha,sync 步骤 merge 上游 tag 后
+   会产生新提交,镜像标签用的是 merge 后那个 sha(R12:run 显示 093b0e2d,镜像却是 custom-5a262630)。
 2. **服务器三连**(root@38.246.245.106):
    ```bash
    /opt/sub2api-tool/update-from-ghcr.sh pull  custom-<sha8>
@@ -151,6 +154,17 @@
   推送顺序铁律照旧(tag 先→分支后),镜像自报版本实测 0.1.172 ✅
 - 落地:CI run 31242238920 绿灯 → 镜像 `custom-8b52d224` → pull/版本验证/smoke/备份(280M)/switch 全过,
   vvct.site 200、title「聚蚁」、logo.svg 在位,日志无 error
+
+**R12(2026-08-13)升级到 v0.1.176(纯运维,CI 全自动无冲突)**
+- 自 R11 起 CI 连续绿灯:8/11 合 v0.1.173(093b0e2d)、8/13 合 v0.1.176(5a262630)。
+  **v0.1.173 那版从未部署,生产从 0.1.172 直接跳到 0.1.176**(跳版无碍,镜像是全量构建)
+- 排查坑:CI run 列表最新一条 head_sha 仍是 093b0e2d,差点误判"没合新版本"——见更新 SOP 第 1 条
+- 服务器四连全过:pull → `strings` 验版本实测 0.1.176 → smoke(/health + logo.svg 标记)→
+  备份 282M(sub2api-20260813-060632.sql.gz)→ switch;回滚位落到 custom-8b52d224
+- 验收:内部 8181 HTTP 200 + title「聚蚁 - AI API Gateway」,本机 Playwright 打开 vvct.site
+  落地页完整(蚁径管线/模型墙/FAQ/页脚),容器日志 3 分钟零 error。
+  注意**服务器上 curl 自己的公网域名会 HTTP 000**(出网/DNS 侧问题,非站点故障),
+  验收要么走 `127.0.0.1:8181`,要么从本机浏览器验
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
