@@ -12,11 +12,11 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-08-13)
+## 当前状态(2026-08-25)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-5a262630`,自报版本 0.1.176**(= 上游 v0.1.176 + 全部二开,**无任何 Grok PR 私货**;CI 全自动合并,无冲突)
-- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(**2026-08-08 实测 52 文件**,清单与 v0.1.168 时逐字一致)
-- 回滚位:`custom-8b52d224`(v0.1.172,见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-ff078d86`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(**2026-08-25 实测 51 文件**,R13 起 3 个 disabled workflow 已对齐上游不再计入)
+- 回滚位:`custom-5a262630`(v0.1.176,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -38,6 +38,9 @@
    出事:`update-from-ghcr.sh rollback`(可再次执行切回)。`status` 看全景。
 3. **merge 冲突时**(CI 红灯):本地 `git fetch upstream --tags && git checkout custom && git merge v0.1.x`。
    解冲突唯一原则:**二开清单文件取 ours,其余一切取 theirs**(setting_handler_update.go 手工保留 ext: 11 行)。
+   **两个例外(R13)**:① 取 ours 前先用 `git diff <上一tag> HEAD -- <file>` 看净差异形态,
+   若只是被摁住的上游版本号/被删的上游步骤(不是品牌或功能改动),那是历史残留,取 theirs 反而根除复发;
+   ② "双方各加一行 import"型冲突要**保留双方**(如 AppSidebar 的 JuyiAppearanceMenu + 上游 Icon)。
    解完硬校验:`git diff v0.1.x --name-only --staged` 必须只剩二开清单+setting_handler_update.go,
    多出的文件 `git checkout v0.1.x -- <f>` 强制对齐。前端 `pnpm run build` 过了再提交。
    **推送顺序铁律:先 `git push private v0.1.x`(tag),后 `git push private custom`(分支)**——
@@ -165,6 +168,30 @@
   落地页完整(蚁径管线/模型墙/FAQ/页脚),容器日志 3 分钟零 error。
   注意**服务器上 curl 自己的公网域名会 HTTP 000**(出网/DNS 侧问题,非站点故障),
   验收要么走 `127.0.0.1:8181`,要么从本机浏览器验
+
+**R13(2026-08-25)升级到 v0.1.183 + 根除"每次上游升 Go 就冲突"的老毛病**
+- 现场:CI 自 8/19 起连续 7 天红灯(全卡在 `Sync latest upstream release into custom`),生产停在 0.1.176;
+  本地又留着上次会话的半成品 merge(MERGE_HEAD=v0.1.182)。**期间上游已发到 v0.1.183**——
+  果断 `git merge --abort` 弃掉 182 那半场,直接合 183(否则合完 182,CI 次日还要为 183 再冲一次)
+- **红灯真因(重要)**:冲突的 3 个文件 `backend-ci.yml`/`release.yml`/`security-scan.yml` 里,
+  所谓"二开差异"其实只是**历史 merge 残留**——把上游的 Go 版本断言摁在 `go1.26.5`(还删了几行测试脚本调用)。
+  上游升到 `go1.27.0` 必然逐字冲突。查 API 确认这 3 个 workflow 全是 `disabled_manually`
+  (只有 `custom-build.yml` 是 active),**内容对生产镜像零影响** → 全部 `git checkout <tag> --` 对齐上游,
+  一劳永逸。二开面积 54 → **51 文件**(净减这 3 个);以后上游再升 Go 不会再卡 CI
+- 判断"某冲突是不是真二开"的姿势:`git diff <上一tag> HEAD -- <file>` 看净差异形态。
+  是品牌/功能改动才取 ours;若只是被摁住的上游版本号/被删的上游步骤,那是残留,取 theirs
+- **AppSidebar.vue 是"双方各加一行 import"型冲突,必须保留双方**:ours 的 `JuyiAppearanceMenu` +
+  theirs 的 `Icon`(上游 OAuth transport 插件用 `h(Icon,{name:'cube'})` 渲染侧栏图标,删了 vue-tsc 直接报错)。
+  这类冲突不能无脑取 ours——`pnpm run build` 是最后一道闸
+- GroupBadge.vue 取 ours(上游新增 kimi/zhipu/deepseek 平台配色,同 R10 composite,自然落入统一 primary);
+  HomeView.vue 取 ours(壳化,上游给官方首页加的模型广场入口与我们无关);
+  GroupsView/SettingsView/SubscriptionsView 自动合并,净差异仍是纯颜色收编
+- 私有仓库 tag 落后 11 个(v0.1.173~183,其中 **v0.1.174 上游跳号不存在**),一次补推 10 个;
+  推送顺序铁律照旧(tag 先→分支后),镜像自报版本实测 **0.1.183** ✅
+- 落地:CI run 32865386270 绿灯 → 镜像 `custom-ff078d86`(别名 v0.1.183-custom)→
+  pull → `strings` 验版本 → smoke → 备份 312M(sub2api-20260825-153612.sql.gz)→ switch;
+  回滚位落到 `custom-5a262630`。验收:内部 8181 HTTP 200 + title「聚蚁」、logo.svg 200、日志零 error、
+  本机 Playwright 打开 vvct.site 落地页完整。**别忘了 `smoke-down` 清理烟测栈**(3 个容器会一直挂着)
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
