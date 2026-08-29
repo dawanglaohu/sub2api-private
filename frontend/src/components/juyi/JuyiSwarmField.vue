@@ -33,23 +33,43 @@
         <stop offset="1" stop-color="rgb(var(--jy-p-500))" stop-opacity="0.5" />
       </linearGradient>
 
-      <!-- 蚂蚁本体:朝 +x,原点在躯干中心;地面投影+渐隐尾迹+六足+三节躯体+触角(伪 3D) -->
+      <!-- 蚂蚁本体:朝 +x,原点在躯干中心。地面投影 + 渐隐尾迹 + 六足(交替三角步态) +
+           四节躯体(腹/腹柄/胸/头) + 膝状触角。每条腿包一层 <g transform="translate(基节)">,
+           内层 path 从 (0,0) 起笔,配 transform-box:fill-box 才能绕基节转(SVG 默认
+           transform-origin 参照的是整个 viewBox,不设 fill-box 会绕画面中心甩飞) -->
       <g id="jy-ant-shape">
-        <ellipse class="jy-ant-shadow" cx="0" cy="6.6" rx="8.5" ry="1.7" />
-        <path class="jy-ant-trail-line" d="M -9 0 Q -14 -0.6 -19 -0.2" />
-        <g class="jy-ant-legs" style="stroke: var(--jy-ant-leg)" stroke-width="1.1" fill="none" stroke-linecap="round">
-          <path d="M 4 -1 L 7.2 -4.6 L 9.8 -5.4" />
-          <path d="M 4 1 L 7.2 4.6 L 9.8 5.4" />
-          <path d="M 0.5 -1.4 L 1.4 -5 L 3.6 -6.2" />
-          <path d="M 0.5 1.4 L 1.4 5 L 3.6 6.2" />
-          <path d="M -3.4 -1.6 L -4.6 -4.8 L -3.2 -6.6" />
-          <path d="M -3.4 1.6 L -4.6 4.8 L -3.2 6.6" />
+        <ellipse class="jy-ant-shadow" cx="-0.6" cy="7.2" rx="9.2" ry="1.8" />
+        <path class="jy-ant-trail-line" d="M -9.6 0 Q -14.6 -0.6 -19.6 -0.2" />
+        <!-- 六足:tripod A = 左前/右中/左后,tripod B = 右前/左中/右后,两组反相半个周期。
+             角度刻意不均分 —— 前足朝前、中足侧展、后足朝后,轮廓呈前后拉长的纺锤形;
+             六条腿均匀放射会立刻读成蜘蛛 -->
+        <g class="jy-ant-legs" style="stroke: var(--jy-ant-leg)" stroke-width="1" fill="none" stroke-linecap="round">
+          <g transform="translate(4, -1)"><path class="jy-leg jy-leg--l jy-leg--a" d="M 0 0 L 4.6 -3.4 L 9.4 -4.6" /></g>
+          <g transform="translate(4, 1)"><path class="jy-leg jy-leg--r jy-leg--b" d="M 0 0 L 4.6 3.4 L 9.4 4.6" /></g>
+          <g transform="translate(0.5, -1.4)"><path class="jy-leg jy-leg--l jy-leg--b" d="M 0 0 L 1.2 -5 L 1.6 -8.4" /></g>
+          <g transform="translate(0.5, 1.4)"><path class="jy-leg jy-leg--r jy-leg--a" d="M 0 0 L 1.2 5 L 1.6 8.4" /></g>
+          <g transform="translate(-3.4, -1.6)"><path class="jy-leg jy-leg--l jy-leg--a" d="M 0 0 L -3.2 -4.4 L -8.2 -6.2" /></g>
+          <g transform="translate(-3.4, 1.6)"><path class="jy-leg jy-leg--r jy-leg--b" d="M 0 0 L -3.2 4.4 L -8.2 6.2" /></g>
         </g>
-        <path class="jy-ant-antenna" style="stroke: var(--jy-ant-leg)" d="M 7.4 -1.1 C 9 -2.4 10 -2.9 11.4 -3.2 M 7.4 1.1 C 9 2.4 10 2.9 11.4 3.2" />
-        <ellipse cx="-5.6" cy="0" rx="5.1" ry="3.3" fill="url(#jy-ant-abd)" stroke="rgb(var(--jy-p-400) / 0.35)" stroke-width="0.5" />
-        <ellipse cx="0.6" cy="0" rx="2.9" ry="2.1" fill="url(#jy-ant-thx)" />
-        <circle cx="6" cy="0" r="2.5" fill="url(#jy-ant-head)" />
-        <circle cx="6.8" cy="-0.9" r="0.55" fill="#ffe9c4" opacity="0.8" />
+        <!-- 躯体:随步态起伏 + 微幅左右扭动(腿在组外,自己摆) -->
+        <g class="jy-ant-body">
+          <ellipse cx="-6.6" cy="0" rx="5.2" ry="3.05" fill="url(#jy-ant-abd)" stroke="rgb(var(--jy-p-400) / 0.35)" stroke-width="0.5" />
+          <!-- 腹柄结节:蚂蚁区别于其他昆虫的标志性一节 -->
+          <ellipse cx="-2.1" cy="0" rx="1.15" ry="0.95" fill="url(#jy-ant-thx)" />
+          <ellipse cx="1" cy="0" rx="3" ry="1.95" fill="url(#jy-ant-thx)" />
+          <!-- 头略高于宽,接近蚂蚁的心形头 -->
+          <ellipse cx="6.2" cy="0" rx="2.45" ry="2.7" fill="url(#jy-ant-head)" />
+          <circle cx="7" cy="-0.95" r="0.55" fill="#ffe9c4" opacity="0.8" />
+          <!-- 膝状触角:柄节外展 → 折角 → 鞭节前伸,末端棒节;整组低频扫动。
+               长度刻意做到超过头+胸 —— 小尺寸下触角是「这是只蚂蚁」的第一识别特征 -->
+          <g class="jy-ant-antennae" style="stroke: var(--jy-ant-leg)" fill="none" stroke-linecap="round">
+            <path class="jy-ant-mandible" d="M 8.4 -1.2 L 9.9 -2.1 M 8.4 1.2 L 9.9 2.1" />
+            <path class="jy-ant-antenna" d="M 7.3 -1.1 L 11.6 -3.8 Q 14 -4.6 16.2 -4.1" />
+            <path class="jy-ant-antenna" d="M 7.3 1.1 L 11.6 3.8 Q 14 4.6 16.2 4.1" />
+            <circle cx="16.2" cy="-4.1" r="0.55" style="fill: var(--jy-ant-leg)" stroke="none" />
+            <circle cx="16.2" cy="4.1" r="0.55" style="fill: var(--jy-ant-leg)" stroke="none" />
+          </g>
+        </g>
       </g>
     </defs>
 
@@ -92,19 +112,25 @@
       :opacity="a.planeOpacity"
     >
       <use href="#jy-ant-shape" />
-      <g v-if="a.grain">
-        <circle cx="9" cy="-4.6" r="5.6" fill="url(#jy-grain-glow)" />
-        <circle cx="9" cy="-4.6" r="1.5" fill="#fff3d6" />
+      <!-- 驮着的数据颗粒:压在胸背上方(原来画在头前 9,-4.6 更像举着),跟着躯体一起颠 -->
+      <g v-if="a.grain" class="jy-ant-grain">
+        <circle cx="0.4" cy="-3.9" r="5.6" fill="url(#jy-grain-glow)" />
+        <circle cx="0.4" cy="-3.9" r="1.5" fill="#fff3d6" />
       </g>
     </g>
   </svg>
 </template>
 
 <script setup lang="ts">
-// 聚蚁签名动效 v3:SVG 蚁群。蚂蚁是画出来的虫(三节躯体/六足/触角/地面投影/渐隐尾迹),
-// 大尺寸三景深,多数工蚁驮着发光数据颗粒沿贝塞尔信息素路径归巢,入巢时巢房闪光+脉冲光环。
-// 性能:~15 只 × 逐帧仅写 style.transform(30fps 节流),无全屏画布重绘、无 DPR 放大、
-// 无 backdrop-filter;标签页隐藏/离屏自动暂停;prefers-reduced-motion 输出静态构图。
+// 聚蚁签名动效 v4:SVG 蚁群。蚂蚁是画出来的虫(四节躯体/腹柄结节/六足/膝状触角/
+// 地面投影/渐隐尾迹),多数工蚁背上驮着发光数据颗粒沿贝塞尔信息素路径归巢,入巢时
+// 巢房闪光+脉冲光环。
+// v4 的重点是「走」而不是「滑」:六足按交替三角步态摆动,步频由 JS 从线速度反推
+// (applyGait),腿摆一轮身体正好前进一个步幅;配合躯体颠簸、朝向抖动与走停节奏。
+// 性能:~15 只 × 逐帧仅写 style.transform(30fps 节流)+ 每只 9 条 CSS 动画(不受
+// 节流限制,跑满帧率;元素极小,重绘面积可忽略),无全屏画布重绘、无 DPR 放大、
+// 无 backdrop-filter;标签页隐藏/离屏时 rAF 与 CSS 动画一并暂停(--jy-anim);
+// prefers-reduced-motion 输出静态构图。
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const props = withDefaults(
@@ -125,19 +151,38 @@ const props = withDefaults(
 interface Ant {
   path: number
   t: number
-  speed: number
+  /** 线速度(viewBox 单位/秒)。刻意不是「每秒推进多少 t」:9 条路径长度从 ~550
+   *  差到 ~1800,按 t 匀速会让短路上的蚂蚁线速度只有长路的三分之一,步频跟着塌下去
+   *  就打滑了。恒定线速度既是物理真实,也让步频天然稳定 */
+  linSpeed: number
   scale: number
   planeOpacity: number
   grain: boolean
+  /** 步态周期(秒),= 步幅 ÷ 线速度 */
+  gaitDur: number
+  /** 步态相位偏移(0-1 的周期比例),避免整群同步 */
+  gaitOff: number
+  /** 朝向抖动 / 走停节奏各自的相位种子 */
+  wobblePhase: number
+  pacePhase: number
 }
 
 const VBW = 1440
 const VBH = 900
 const PLANES = [
-  { scale: 0.62, opacity: 0.55, speed: 0.72 },
-  { scale: 0.92, opacity: 0.78, speed: 1 },
-  { scale: 1.28, opacity: 1, speed: 1.32 }
+  { scale: 0.62, opacity: 0.55 },
+  { scale: 0.92, opacity: 0.78 },
+  { scale: 1.28, opacity: 1 }
 ]
+/** 腿摆一个完整周期,身体前进多少 viewBox 单位(scale=1 时)。
+ *  与腿几何绑死:足端距基节平均约 6.7 单位、摆幅 ±22° → 行程 ≈ 2×6.7×sin22° ≈ 5.0。
+ *  改腿长或摆幅就要一起改这里,否则脚会打滑。 */
+const STRIDE_UNITS = 5
+/** scale=1 时的线速度基准。与 STRIDE_UNITS 一起把步频定在 8-11Hz:
+ *  60fps 下 5-7 帧一个周期,看得清迈步又不至于慢成慢动作 */
+const BASE_LIN_SPEED = 48
+const GAIT_MIN = 0.07
+const GAIT_MAX = 0.3
 
 const svgRef = ref<SVGSVGElement | null>(null)
 const ringsRef = ref<SVGGElement | null>(null)
@@ -146,6 +191,7 @@ const pathDs = ref<string[]>([])
 const ants = ref<Ant[]>([])
 const antEls: (SVGGElement | null)[] = []
 const pathSpecs: PathSpec[] = []
+const pathLens: number[] = []
 let rafId = 0
 let running = false
 let lastRender = 0
@@ -190,6 +236,29 @@ function buildPaths() {
     (s) => `M ${s.x0} ${s.y0} C ${s.cx1} ${s.cy1}, ${s.cx2} ${s.cy2}, ${s.x1} ${s.y1}`
   )
   pathSpecs.push(...specs)
+  // 弧长折线近似:步频要除以线速度,而 t 是等参数推进不是等弧长,只能取全长均值
+  pathLens.length = 0
+  for (const s of specs) {
+    let len = 0
+    let prev = cubicAt(s, 0)
+    for (let i = 1; i <= 32; i++) {
+      const p = cubicAt(s, i / 32)
+      len += Math.hypot(p.x - prev.x, p.y - prev.y)
+      prev = p
+    }
+    pathLens.push(len)
+  }
+}
+
+/** 步频锚定线速度:腿摆一轮 = 身体走一个步幅。线速度恒定,故整只蚁生命周期只需算一次 */
+function applyGait(i: number) {
+  const el = antEls[i]
+  const a = ants.value[i]
+  if (!el || !a) return
+  const dur = Math.min(GAIT_MAX, Math.max(GAIT_MIN, (STRIDE_UNITS * a.scale) / a.linSpeed))
+  a.gaitDur = dur
+  el.style.setProperty('--jy-gait-dur', dur.toFixed(3) + 's')
+  el.style.setProperty('--jy-gait-off', (-a.gaitOff * dur).toFixed(3) + 's')
 }
 
 function setAntEl(el: unknown, i: number) {
@@ -218,7 +287,9 @@ function applyAnt(i: number) {
   if (!s) return
   const pos = cubicAt(s, a.t)
   const deg = cubicTangent(s, a.t)
-  el.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px) rotate(${deg.toFixed(1)}deg) scale(${a.scale})`
+  // 朝向抖动:真蚂蚁不会精确贴着切线走,±2.6° 的慢摆足够去掉「轨道车」感
+  const wob = 2.6 * Math.sin(lastRender / 1000 * 2.3 + a.wobblePhase)
+  el.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px) rotate(${(deg + wob).toFixed(1)}deg) scale(${a.scale})`
 }
 
 function spawnRing() {
@@ -257,11 +328,17 @@ function buildAnts() {
     list.push({
       path: (i * 2 + plane) % pathSpecs.length,
       t: (i * 0.137) % 1,
-      // v3.1:之前 0.016/s 一条路要走 60 秒,肉眼等于静止;提到 0.05-0.09/s(11-20s 走完),并加随机抖动避免同步感
-      speed: (0.05 + Math.random() * 0.04) * P.speed,
+      // 线速度按景深缩放(远处的小蚁看着就该慢),±15% 随机避免整群同速。
+      // 步频 = 步幅/线速度,两边都含 scale 正好约掉 → 全群步频一致约 8.5Hz,
+      // 也符合「同一种蚂蚁」的直觉
+      linSpeed: BASE_LIN_SPEED * P.scale * (0.85 + Math.random() * 0.3),
       scale: P.scale,
       planeOpacity: P.opacity,
-      grain: i % 5 !== 3 // 大多数蚂蚁都在运粮
+      grain: i % 5 !== 3, // 大多数蚂蚁都在运粮
+      gaitDur: 0.12,
+      gaitOff: Math.random(),
+      wobblePhase: Math.random() * Math.PI * 2,
+      pacePhase: Math.random() * Math.PI * 2
     })
   }
   ants.value = list
@@ -275,7 +352,10 @@ function frame(ts: number) {
   lastRender = ts
   for (let i = 0; i < ants.value.length; i++) {
     const a = ants.value[i]
-    a.t += a.speed * dt
+    // 走停节奏:±12% 的低频速度调制。步频是常量,幅度再大脚就会打滑,所以到此为止
+    const pace = 1 + 0.12 * Math.sin(ts / 1000 * 1.7 + a.pacePhase)
+    // 线速度 → 参数速度:除以当前路径弧长,短路上 t 自然推进得快
+    a.t += ((a.linSpeed * pace) / (pathLens[a.path] || 1200)) * dt
     if (a.t >= 1) {
       const spec = pathSpecs[a.path]
       if (spec && spec.x1 === hivePX && spec.y1 === hivePY && a.grain) deliver()
@@ -289,17 +369,21 @@ function frame(ts: number) {
 function start() {
   if (running) return
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    // 静态构图:把蚂蚁摆到散布均匀的位置
+    // 静态构图:把蚂蚁摆到散布均匀的位置(步态 CSS 已被同名媒体查询关掉)
     for (let i = 0; i < ants.value.length; i++) applyAnt(i)
     return
   }
   running = true
+  // 步态是 CSS 动画,不归 rAF 管:离屏/切后台时必须显式恢复,否则 stop 后就再也不动了
+  svgRef.value?.style.setProperty('--jy-anim', 'running')
   lastRender = performance.now()
   rafId = requestAnimationFrame(frame)
 }
 
 function stop() {
   running = false
+  // 同理:光停 rAF 只会冻住位移,六足和触角会继续空转烧 CPU
+  svgRef.value?.style.setProperty('--jy-anim', 'paused')
   if (rafId) cancelAnimationFrame(rafId)
   rafId = 0
 }
@@ -309,9 +393,13 @@ buildPaths()
 
 onMounted(() => {
   buildAnts()
-  // 下一帧预摆一帧,避免首帧闪现在原点
+  // 下一帧预摆一帧,避免首帧闪现在原点;顺带把步频变量写进各自的 <g>
   requestAnimationFrame(() => {
-    for (let i = 0; i < ants.value.length; i++) applyAnt(i)
+    lastRender = performance.now()
+    for (let i = 0; i < ants.value.length; i++) {
+      applyGait(i)
+      applyAnt(i)
+    }
   })
   start()
 
@@ -356,24 +444,133 @@ onUnmounted(() => {
   fill: none;
 }
 .jy-ant-antenna {
-  stroke-width: 0.9;
+  stroke-width: 1;
   fill: none;
   stroke-linecap: round;
 }
-/* 爬行颠籸:身体轻微起伏,让虫「活」起来(共用 def,全群同相位,幅度极小) */
-.jy-ant-body {
-  animation: jy-ant-bob 0.55s ease-in-out infinite alternate;
+.jy-ant-mandible {
+  stroke-width: 0.7;
+  fill: none;
+  stroke-linecap: round;
+}
+
+/* ---- 步态 ----------------------------------------------------------------
+   每只蚂蚁的步频由 JS 按「路径线速度 ÷ 步幅」算出写进 --jy-gait-dur,所以腿摆一次
+   身体正好前进一个步幅 —— 这是「走」而不是「滑」的全部关键。--jy-gait-off 给每只
+   一个随机相位,免得整群齐步走。变量经 <g class="jy-ant"> 继承穿透 <use> 的 shadow
+   tree(CSS 自定义属性是唯一能穿进去的东西,选择器进不去)。
+   动画的启停也只能靠变量:animation-play-state 不可继承,故用 --jy-anim 中转。 */
+.jy-leg,
+.jy-ant-body,
+.jy-ant-grain,
+.jy-ant-antennae {
+  animation-play-state: var(--jy-anim, running);
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+.jy-leg {
+  transform-box: fill-box;
+  animation-duration: var(--jy-gait-dur, 0.12s);
+}
+/* 左右两侧腿绕基节转的方向相反,才能同时「向后蹬」;基节都在 path 起笔处 (0,0),
+   对左腿是 bbox 左下角、对右腿是左上角 */
+.jy-leg--l {
+  transform-origin: 0 100%;
+  animation-name: jy-gait-l;
+}
+.jy-leg--r {
+  transform-origin: 0 0;
+  animation-name: jy-gait-r;
+}
+.jy-leg--a {
+  animation-delay: var(--jy-gait-off, 0s);
+}
+.jy-leg--b {
+  animation-delay: calc(var(--jy-gait-off, 0s) - var(--jy-gait-dur, 0.12s) * 0.5);
+}
+/* 一个周期 = 着地推进(0→62%,腿相对身体后移)+ 抬起前摆(62→100%,略缩短模拟离地) */
+@keyframes jy-gait-l {
+  0% {
+    transform: rotate(22deg);
+  }
+  62% {
+    transform: rotate(-22deg) scale(1);
+  }
+  78% {
+    transform: rotate(-6deg) scale(0.88);
+  }
+  100% {
+    transform: rotate(22deg) scale(1);
+  }
+}
+@keyframes jy-gait-r {
+  0% {
+    transform: rotate(-22deg);
+  }
+  62% {
+    transform: rotate(22deg) scale(1);
+  }
+  78% {
+    transform: rotate(6deg) scale(0.88);
+  }
+  100% {
+    transform: rotate(-22deg) scale(1);
+  }
+}
+/* 躯体:纵向颠簸走两拍(每半步一颠),左右扭动走一拍 */
+.jy-ant-body,
+.jy-ant-grain {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation-name: jy-ant-bob;
+  animation-duration: var(--jy-gait-dur, 0.12s);
+  animation-delay: var(--jy-gait-off, 0s);
 }
 @keyframes jy-ant-bob {
-  from {
-    transform: translateY(0.35px);
+  0% {
+    transform: translateY(0.3px) rotate(1deg);
   }
-  to {
-    transform: translateY(-0.35px);
+  25% {
+    transform: translateY(-0.3px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(0.3px) rotate(-1deg);
+  }
+  75% {
+    transform: translateY(-0.3px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(0.3px) rotate(1deg);
+  }
+}
+/* 触角:刻意与步频不同步(固定 0.9s),两者拍频错开才不像上了发条 */
+.jy-ant-antennae {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation-name: jy-antennate;
+  animation-duration: 0.9s;
+  animation-delay: var(--jy-gait-off, 0s);
+  animation-timing-function: ease-in-out;
+}
+@keyframes jy-antennate {
+  0% {
+    transform: rotate(-6deg);
+  }
+  40% {
+    transform: rotate(7deg);
+  }
+  70% {
+    transform: rotate(-2deg);
+  }
+  100% {
+    transform: rotate(-6deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jy-ant-body {
+  .jy-leg,
+  .jy-ant-body,
+  .jy-ant-grain,
+  .jy-ant-antennae {
     animation: none;
   }
 }
