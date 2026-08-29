@@ -1,11 +1,11 @@
 <template>
   <div class="relative flex min-h-screen flex-col overflow-hidden bg-[#FBF9F3] dark:bg-dark-950">
-    <!-- 背景:蜂窝纹理 + 蜜琥珀光晕 + 蚁群行进动效 -->
-    <div class="juyi-hex-pattern pointer-events-none absolute inset-0"></div>
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    <!-- 背景:蜂窝纹理 + 蜜琥珀光晕 + SVG 蚁群归巢(视口固定,无画布重绘) -->
+    <div class="juyi-hex-pattern pointer-events-none fixed inset-0"></div>
+    <div class="pointer-events-none fixed inset-0 overflow-hidden">
       <div class="absolute -right-40 -top-40 h-96 w-96 rounded-full bg-primary-400/15 blur-3xl"></div>
       <div class="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-primary-500/10 blur-3xl"></div>
-      <JuyiSwarmCanvas :density="52" :show-hex="false" :intensity="0.9" />
+      <JuyiSwarmField :density="52" :show-hex="false" :intensity="0.9" :hive-x="0.72" :hive-y="0.3" />
     </div>
 
     <!-- 顶栏 -->
@@ -70,23 +70,23 @@
         <div class="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-8">
           <div class="text-center lg:text-left">
             <span
-              class="mb-6 inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-medium tracking-wide text-primary-700 dark:text-primary-300"
+              class="jy-rise jy-d1 mb-6 inline-flex items-center gap-2 rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-xs font-medium tracking-wide text-primary-700 dark:text-primary-300"
             >
               <span class="hex-cell inline-block h-2.5 w-2.5 bg-primary-500"></span>
               {{ t('juyi.home.eyebrow') }}
             </span>
             <h1
-              class="mb-5 text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-5xl lg:text-[3.4rem]"
+              class="jy-rise jy-d2 mb-5 text-[2.6rem] font-extrabold leading-[1.06] tracking-[-0.02em] text-gray-900 dark:text-white md:text-7xl lg:text-[4.5rem]"
             >
-              {{ t('juyi.home.heroTitle') }}
+              {{ t('juyi.home.heroTitleA') }}<span class="jy-flow-text">{{ t('juyi.home.heroTitleB') }}</span>
             </h1>
-            <p class="mx-auto mb-8 max-w-xl text-base leading-relaxed text-gray-600 dark:text-dark-300 md:text-lg lg:mx-0">
+            <p class="jy-rise jy-d3 mx-auto mb-8 max-w-xl text-base leading-relaxed text-gray-600 dark:text-dark-300 md:text-lg lg:mx-0">
               {{ siteSubtitle || t('juyi.home.heroDesc') }}
             </p>
-            <div class="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <div class="jy-rise jy-d4 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <router-link
                 :to="isAuthenticated ? dashboardPath : '/login'"
-                class="btn btn-primary btn-lg shadow-glow"
+                class="btn btn-primary btn-lg shadow-glow jy-sweep animate-pulse-glow"
               >
                 {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
                 <Icon name="arrowRight" size="md" :stroke-width="2" />
@@ -96,11 +96,11 @@
               </a>
             </div>
             <!-- 能力标签 -->
-            <div class="mt-8 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
+            <div class="jy-rise jy-d5 mt-8 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
               <span
                 v-for="tag in heroTags"
                 :key="tag"
-                class="inline-flex items-center gap-1.5 rounded-full border border-gray-200/70 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-gray-600 backdrop-blur-sm dark:border-dark-700/60 dark:bg-dark-800/60 dark:text-dark-300"
+                class="inline-flex items-center gap-1.5 rounded-full border border-gray-200/70 bg-white/85 px-3.5 py-1.5 text-xs font-medium text-gray-600 dark:border-dark-700/60 dark:bg-dark-800/85 dark:text-dark-300"
               >
                 <Icon name="check" size="xs" class="text-primary-500" :stroke-width="2.5" />
                 {{ tag }}
@@ -108,24 +108,47 @@
             </div>
           </div>
 
-          <!-- 签名元素:蚁径聚合管线 -->
-          <div class="flex justify-center lg:justify-end">
+          <!-- 签名元素:蚁径聚合管线(数据颗粒汇流演示) -->
+          <div class="jy-rise jy-d3 flex justify-center lg:justify-end">
             <AntTrailPipeline />
           </div>
         </div>
       </section>
 
-      <!-- 三步接入(真实顺序,编号承载信息) -->
-      <section class="px-6 py-16">
-        <div class="mx-auto max-w-6xl">
-          <div class="mb-10 text-center">
+      <!-- 模型跑马灯(全站唯一 marquee,悬停暂停,静态降级为换行) -->
+      <section class="px-6 pb-8 pt-2" aria-hidden="true">
+        <div
+          class="jy-marquee mx-auto max-w-6xl overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]"
+        >
+          <div class="jy-marquee-track items-center gap-3 pr-3">
+            <template v-for="n in 2" :key="n">
+              <span
+                v-for="m in marqueeModels"
+                :key="n + m"
+                class="inline-flex flex-shrink-0 items-center gap-2 rounded-lg border border-gray-200/70 bg-white/85 px-3.5 py-1.5 font-mono text-xs text-gray-500 dark:border-dark-700/50 dark:bg-dark-800/85 dark:text-dark-300"
+              >
+                <span class="hex-cell inline-block h-1.5 w-1.5 bg-primary-500/70"></span>
+                {{ m }}
+              </span>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- 三步接入(色带分区 + 行军分隔线,真实顺序,编号承载信息) -->
+      <section class="jy-band px-6 py-16">
+        <svg class="jy-ant-divider" viewBox="0 0 1200 3" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="1.5" x2="1200" y2="1.5" vector-effect="non-scaling-stroke" class="ant-path" />
+        </svg>
+        <div class="mx-auto max-w-6xl pt-4">
+          <div class="mb-10 text-center" data-jy-reveal>
             <h2 class="mb-2 text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
               {{ t('juyi.home.steps.title') }}
             </h2>
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('juyi.home.steps.subtitle') }}</p>
           </div>
           <div class="grid gap-6 lg:grid-cols-5">
-            <ol class="space-y-5 lg:col-span-2">
+            <ol class="space-y-5 lg:col-span-2" data-jy-reveal :data-jy-reveal-delay="80">
               <li v-for="(step, i) in steps" :key="i" class="flex gap-4">
                 <span
                   class="hex-cell flex h-11 w-11 flex-shrink-0 items-center justify-center bg-primary-500/15 font-mono text-sm font-semibold text-primary-600 dark:text-primary-400"
@@ -139,8 +162,8 @@
               </li>
             </ol>
             <!-- curl 示例:端点为当前站点真实地址 -->
-            <div class="lg:col-span-3">
-              <div class="overflow-hidden rounded-2xl border border-dark-700/60 bg-[#17120C] shadow-glass">
+            <div class="lg:col-span-3" data-jy-reveal :data-jy-reveal-delay="160">
+              <div class="overflow-hidden rounded-2xl border border-dark-700/60 bg-[#17120C] shadow-glass transition-shadow duration-300 hover:shadow-glow">
                 <div class="flex items-center justify-between border-b border-dark-700/60 px-4 py-2.5">
                   <span class="font-mono text-xs text-dark-400">POST {{ origin }}/v1/messages</span>
                   <button
@@ -158,23 +181,27 @@
         </div>
       </section>
 
-      <!-- 特性 bento -->
+      <!-- 特性 bento(不对称:两张主演示卡 + 四张常规卡) -->
       <section class="px-6 py-16">
         <div class="mx-auto max-w-6xl">
-          <div class="mb-10 text-center">
+          <div class="mb-10 text-center" data-jy-reveal>
             <h2 class="mb-2 text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
               {{ t('juyi.home.features.title') }}
             </h2>
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('juyi.home.features.subtitle') }}</p>
           </div>
-          <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             <div
-              v-for="f in features"
+              v-for="(f, i) in features"
               :key="f.key"
-              class="group rounded-2xl border border-gray-200/60 bg-white/70 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-400/40 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
+              class="jy-bento-card group relative overflow-hidden rounded-2xl border border-gray-200/60 bg-white/85 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/85"
+              :class="f.featured ? 'md:col-span-2' : ''"
+              data-jy-reveal
+              :data-jy-reveal-delay="(i % 2) * 90"
             >
+              <span class="jy-card-accent" aria-hidden="true"></span>
               <span
-                class="hex-cell mb-4 flex h-11 w-11 items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 transition-transform group-hover:scale-110"
+                class="hex-cell mb-4 flex h-12 w-10 items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
               >
                 <Icon :name="f.icon" size="md" class="text-white" :stroke-width="2" />
               </span>
@@ -184,29 +211,100 @@
               <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
                 {{ t(`juyi.home.features.${f.key}Desc`) }}
               </p>
+
+              <!-- 微演示:多源归一(SMIL 驱动,帧内零 JS;纯装饰) -->
+              <svg
+                v-if="f.key === 'gateway'"
+                class="mt-5 w-full"
+                height="30"
+                viewBox="0 0 220 30"
+                aria-hidden="true"
+              >
+                <g fill="rgb(var(--jy-p-400) / 0.85)">
+                  <path d="M7 2.7 L10.2 4.5 L10.2 8.2 L7 10 L3.8 8.2 L3.8 4.5 Z" />
+                  <path d="M7 11.2 L10.2 13 L10.2 16.7 L7 18.5 L3.8 16.7 L3.8 13 Z" />
+                  <path d="M7 19.7 L10.2 21.5 L10.2 25.2 L7 27 L3.8 25.2 L3.8 21.5 Z" />
+                </g>
+                <line x1="13" y1="15" x2="204" y2="15" stroke="rgb(var(--jy-p-500) / 0.3)" stroke-width="1.2" />
+                <circle class="jy-smil-packet" r="2.6" cx="13" cy="15" fill="rgb(var(--jy-p-500))">
+                  <animate attributeName="cx" values="13;204" dur="2.4s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0;1;0.9;0" keyTimes="0;0.08;0.85;1" dur="2.4s" repeatCount="indefinite" />
+                </circle>
+                <circle class="jy-smil-packet" r="2.2" cx="13" cy="15" fill="rgb(var(--jy-p-400))">
+                  <animate attributeName="cx" values="13;204" dur="2.4s" begin="-0.8s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0;1;0.9;0" keyTimes="0;0.08;0.85;1" dur="2.4s" begin="-0.8s" repeatCount="indefinite" />
+                </circle>
+                <circle class="jy-smil-packet" r="2.4" cx="13" cy="15" fill="#2cb1a6">
+                  <animate attributeName="cx" values="13;204" dur="2.4s" begin="-1.6s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0;1;0.9;0" keyTimes="0;0.08;0.85;1" dur="2.4s" begin="-1.6s" repeatCount="indefinite" />
+                </circle>
+                <path
+                  d="M212 8.5 L217.3 11.6 L217.3 17.9 L212 21 L206.7 17.9 L206.7 11.6 Z"
+                  fill="rgb(var(--jy-p-500))"
+                  stroke="rgb(var(--jy-p-600))"
+                  stroke-width="1"
+                />
+                <text x="212" y="17" text-anchor="middle" font-size="7" font-weight="700" fill="#fff">1</text>
+              </svg>
+
+              <!-- 微演示:蚁群负载波(纯装饰,aria-hidden) -->
+              <div v-else-if="f.key === 'schedule'" class="mt-5 flex items-center gap-1.5" aria-hidden="true">
+                <span
+                  v-for="ci in 8"
+                  :key="ci"
+                  class="hex-cell h-5 w-4 jy-wave-cell"
+                  :class="ci === 6 ? 'bg-red-400/70' : 'bg-primary-500/70'"
+                  :style="{ animationDelay: ci * 0.18 + 's' }"
+                ></span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- 支持平台 -->
-      <section class="px-6 py-16">
-        <div class="mx-auto max-w-6xl text-center">
-          <h2 class="mb-2 text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
+      <!-- 品牌宣言(刻意的暗色反转面板,同 curl 窗口色系) -->
+      <section class="px-6 py-10">
+        <div
+          class="jy-manifesto relative mx-auto max-w-6xl overflow-hidden rounded-3xl px-8 py-14 text-center md:py-16"
+          data-jy-reveal
+        >
+          <div class="juyi-hex-pattern pointer-events-none absolute inset-0 opacity-60"></div>
+          <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary-500/15 blur-3xl"></div>
+          <div class="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-primary-400/10 blur-3xl"></div>
+          <p class="relative mb-4 font-mono text-[11px] tracking-[0.28em] text-primary-400/80">JUYI · COLONY</p>
+          <h2 class="relative mx-auto max-w-3xl text-[1.85rem] font-extrabold leading-[1.18] text-white [text-wrap:balance] md:text-[2.7rem]">
+            {{ t('juyi.home.manifesto.titleA') }}<span class="jy-glow-text-static">{{ t('juyi.home.manifesto.titleB') }}</span>
+          </h2>
+          <p class="relative mx-auto mt-5 max-w-xl text-sm leading-relaxed text-[#C9BFAE] md:text-[15px]">
+            {{ t('juyi.home.manifesto.sub') }}
+          </p>
+          <svg class="relative mx-auto mt-8" width="160" height="4" aria-hidden="true">
+            <line x1="0" y1="2" x2="160" y2="2" stroke="#F7B62B" stroke-opacity="0.55" stroke-width="1.6" class="ant-path" />
+          </svg>
+        </div>
+      </section>
+
+      <!-- 支持平台(色带 + 行军分隔线) -->
+      <section class="jy-band px-6 py-16">
+        <svg class="jy-ant-divider" viewBox="0 0 1200 3" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="1.5" x2="1200" y2="1.5" vector-effect="non-scaling-stroke" class="ant-path" />
+        </svg>
+        <div class="mx-auto max-w-6xl pt-4 text-center">
+          <h2 class="mb-2 text-2xl font-bold text-gray-900 dark:text-white md:text-3xl" data-jy-reveal>
             {{ t('home.providers.title') }}
           </h2>
-          <p class="mb-8 text-sm text-gray-500 dark:text-dark-400">
+          <p class="mb-8 text-sm text-gray-500 dark:text-dark-400" data-jy-reveal :data-jy-reveal-delay="60">
             {{ t('home.providers.description') }}
           </p>
-          <div class="flex flex-wrap items-center justify-center gap-4">
+          <div class="flex flex-wrap items-center justify-center gap-4" data-jy-reveal :data-jy-reveal-delay="120">
             <div
               v-for="p in providers"
               :key="p.name"
-              class="flex items-center gap-2.5 rounded-xl border px-5 py-3 backdrop-blur-sm"
+              class="jy-provider flex items-center gap-2.5 rounded-xl border bg-white/90 px-5 py-3 dark:bg-dark-800/90"
               :class="
                 p.soon
-                  ? 'border-gray-200/60 bg-white/40 opacity-60 dark:border-dark-700/50 dark:bg-dark-800/40'
-                  : 'border-primary-300/40 bg-white/70 dark:border-primary-700/40 dark:bg-dark-800/60'
+                  ? 'border-gray-200/60 opacity-60 dark:border-dark-700/50'
+                  : 'border-primary-300/50 dark:border-primary-700/40'
               "
             >
               <span
@@ -234,14 +332,16 @@
       <!-- FAQ -->
       <section class="px-6 py-16">
         <div class="mx-auto max-w-3xl">
-          <h2 class="mb-8 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
+          <h2 class="mb-8 text-center text-2xl font-bold text-gray-900 dark:text-white md:text-3xl" data-jy-reveal>
             {{ t('juyi.home.faq.title') }}
           </h2>
           <div class="space-y-3">
             <details
               v-for="n in 3"
               :key="n"
-              class="group rounded-2xl border border-gray-200/60 bg-white/70 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/60"
+              class="group rounded-2xl border border-gray-200/60 bg-white/70 backdrop-blur-sm transition-colors hover:border-primary-400/40 dark:border-dark-700/50 dark:bg-dark-800/60"
+              data-jy-reveal
+              :data-jy-reveal-delay="(n - 1) * 70"
             >
               <summary
                 class="flex cursor-pointer list-none items-center justify-between px-6 py-4 font-medium text-gray-900 dark:text-white [&::-webkit-details-marker]:hidden"
@@ -302,8 +402,9 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import BrandMark from '@/components/brand/BrandMark.vue'
 import AntTrailPipeline from '@/components/home/AntTrailPipeline.vue'
-import JuyiSwarmCanvas from '@/components/juyi/JuyiSwarmCanvas.vue'
+import JuyiSwarmField from '@/components/juyi/JuyiSwarmField.vue'
 import JuyiAppearanceMenu from '@/components/juyi/JuyiAppearanceMenu.vue'
+import { useJuyiReveal } from '@/composables/useJuyiReveal'
 import { useClipboard } from '@/composables/useClipboard'
 import { sanitizeUrl } from '@/utils/url'
 
@@ -362,13 +463,27 @@ const steps = computed(() => [
 ])
 
 const features = [
-  { key: 'gateway', icon: 'server' },
-  { key: 'schedule', icon: 'swap' },
-  { key: 'billing', icon: 'dollar' },
-  { key: 'stats', icon: 'chart' },
-  { key: 'keys', icon: 'key' },
-  { key: 'redeem', icon: 'gift' }
+  { key: 'gateway', icon: 'server', featured: true },
+  { key: 'schedule', icon: 'swap', featured: true },
+  { key: 'billing', icon: 'dollar', featured: false },
+  { key: 'stats', icon: 'chart', featured: false },
+  { key: 'keys', icon: 'key', featured: false },
+  { key: 'redeem', icon: 'gift', featured: false }
 ] as const
+
+// 跑马灯:站内已接入的热门模型(纯展示,双份内容供无缝滚动)
+const marqueeModels = [
+  'claude-opus-4-5',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5',
+  'gpt-5.1-codex-max',
+  'gpt-5.1',
+  'gemini-3-pro',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'grok-4',
+  'grok-code-fast-1'
+]
 
 const providers = computed(() => [
   { name: t('home.providers.claude'), letter: 'C', soon: false },
@@ -406,4 +521,7 @@ onMounted(() => {
     appStore.fetchPublicSettings()
   }
 })
+
+// 滚动浮现(data-jy-reveal 元素)
+useJuyiReveal()
 </script>

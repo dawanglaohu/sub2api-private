@@ -1,5 +1,5 @@
 <template>
-  <div class="card p-4">
+  <div class="card juyi-hex-pattern relative overflow-hidden p-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div>
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -42,21 +42,23 @@
         {{ t('juyi.hive.empty') }}
       </div>
 
-      <!-- 蜂窝格:每格一个服务账号,颜色即健康度 -->
+      <!-- 蜂窝格:每格一个服务账号,颜色即健康度;错落浮现 -->
       <div v-else class="flex flex-wrap gap-1.5">
         <button
-          v-for="acc in visibleAccounts"
+          v-for="(acc, i) in visibleAccounts"
           :key="acc.id"
           type="button"
-          class="hex-cell h-8 w-7 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          class="hex-cell jy-hex-in h-8 w-7 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           :class="cellClass(acc)"
+          :style="{ animationDelay: (i % 24) * 22 + 'ms' }"
           :title="cellTitle(acc)"
           @click="goAccounts"
         ></button>
         <router-link
           v-if="total > visibleAccounts.length"
           to="/admin/accounts"
-          class="hex-cell flex h-8 items-center justify-center bg-gray-200 px-2 font-mono text-[10px] font-semibold text-gray-600 transition-colors hover:bg-gray-300 dark:bg-dark-700 dark:text-dark-300 dark:hover:bg-dark-600"
+          class="hex-cell jy-hex-in flex h-8 items-center justify-center bg-gray-200 px-2 font-mono text-[10px] font-semibold text-gray-600 transition-colors hover:bg-gray-300 dark:bg-dark-700 dark:text-dark-300 dark:hover:bg-dark-600"
+          :style="{ animationDelay: (visibleAccounts.length % 24) * 22 + 'ms' }"
           :title="t('juyi.hive.more', { n: total - visibleAccounts.length })"
         >
           +{{ total - visibleAccounts.length }}

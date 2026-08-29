@@ -7,9 +7,10 @@
     <AppSidebar />
 
     <!-- Main Content Area -->
+    <!-- 聚蚁:浮动侧边栏留出 10px 间隙,主列 margin 同步加宽(276=10+256+10 / 92=10+72+10) -->
     <div
       class="relative min-h-screen transition-all duration-300"
-      :class="[sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64']"
+      :class="[sidebarCollapsed ? 'lg:ml-[92px]' : 'lg:ml-[276px]']"
     >
       <!-- Header -->
       <AppHeader />

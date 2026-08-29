@@ -1,6 +1,10 @@
 /* =============================================================================
  * 聚蚁品牌层(二开新增,独立文件,upstream 合并零冲突)
  * 字体仅含拉丁子集(52KB),中文走系统字体栈
+ *
+ * finesse · register=brand(home/auth)+product(dash) · A=蜜琥珀+信息素青
+ * B=中文黑体粗/拉丁 Space Grotesk · C=hero 分行大字+暗色反转宣言 · D=rAF-SVG 蚁群+CSS 行军
+ * E=蚁巢蜂群 · SOUL=8 SPECTACLE=7 DENSITY=5(home) · 2/8(dash)
  * ============================================================================= */
 
 @font-face {
@@ -98,6 +102,34 @@
   --jy-p-950: 76 5 25;
 }
 
+/* ---------------------------------------------------------------------------
+ * 蚁体配色(JuyiSwarmField):亮色=暖褐虫;暗色=琥珀背光虫
+ * 暗色下若沿用暖褐会贴底隐形,只剩驮的发光颗粒(用户反馈“只见光团”)
+ * ------------------------------------------------------------------------- */
+:root {
+  --jy-ant-a1: #9a672a;
+  --jy-ant-a2: #523612;
+  --jy-ant-a3: #2f1e0a;
+  --jy-ant-t1: #a8742e;
+  --jy-ant-t2: #42290e;
+  --jy-ant-h1: #875a22;
+  --jy-ant-h2: #2f1e0a;
+  --jy-ant-leg: #3a2a12;
+  --jy-ant-shadow: rgb(30 22 10 / 0.16);
+}
+
+.dark {
+  --jy-ant-a1: #ffd98d;
+  --jy-ant-a2: #e8a52c;
+  --jy-ant-a3: #9a6516;
+  --jy-ant-t1: #f2b13a;
+  --jy-ant-t2: #8a5c16;
+  --jy-ant-h1: #eba733;
+  --jy-ant-h2: #7a5012;
+  --jy-ant-leg: #f0bc60;
+  --jy-ant-shadow: rgb(0 0 0 / 0.4);
+}
+
 [data-jy-font='serif'] {
   --jy-font-sans: Georgia, 'Times New Roman', 'Noto Serif SC', 'Source Han Serif SC',
     'Songti SC', SimSun, serif;
@@ -158,4 +190,501 @@
 
 .dark .juyi-hex-pattern {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cg fill='none' stroke='%23f7b62b' stroke-opacity='0.05'%3E%3Cpath d='M28 2 54 17v30L28 62 2 47V17Z'/%3E%3Cpath d='M28 62v33M54 47v32M2 47v32'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ===========================================================================
+ * 聚蚁动效层 v2(主页/登录页/仪表盘;reduced-motion 全部降级为静态)
+ * ======================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 入场浮起(jy-d1..d6 错落延迟;backwards 填充,结束后不干扰 hover transform)
+ * ------------------------------------------------------------------------- */
+@keyframes jy-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.jy-rise {
+  animation: jy-rise-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.jy-d1 { animation-delay: 0.05s; }
+.jy-d2 { animation-delay: 0.14s; }
+.jy-d3 { animation-delay: 0.23s; }
+.jy-d4 { animation-delay: 0.34s; }
+.jy-d5 { animation-delay: 0.46s; }
+.jy-d6 { animation-delay: 0.58s; }
+
+/* ---------------------------------------------------------------------------
+ * 滚动浮现(JS 兵装:useJuyiReveal 加 jy-reveal 才隐藏,无 JS/reduced-motion 不隐藏)
+ * ------------------------------------------------------------------------- */
+.jy-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.jy-reveal.jy-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * 主按钮蜜糖扫光(悬停时一道高光划过)
+ * ------------------------------------------------------------------------- */
+.jy-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.jy-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.35) 50%, transparent 58%);
+  transform: translateX(-130%);
+  transition: transform 0.7s ease;
+}
+
+.jy-sweep:hover::after,
+.jy-sweep:focus-visible::after {
+  transform: translateX(130%);
+}
+
+/* ---------------------------------------------------------------------------
+ * 模型名跑马灯(全站唯一 marquee;悬停暂停;reduced-motion 换行为静态换行)
+ * ------------------------------------------------------------------------- */
+@keyframes jy-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.jy-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: jy-marquee 38s linear infinite;
+}
+
+.jy-marquee:hover .jy-marquee-track {
+  animation-play-state: paused;
+}
+
+/* ---------------------------------------------------------------------------
+ * 品牌宣言暗色面板(刻意的暗色反转,同 curl 窗口色系)
+ * ------------------------------------------------------------------------- */
+.jy-manifesto {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(var(--jy-p-900) / 0.4), transparent 60%),
+    #17120c;
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--jy-p-500) / 0.16),
+    0 24px 60px rgb(23 18 12 / 0.3);
+}
+
+/* ---------------------------------------------------------------------------
+ * bento 卡:顶部琥珀发丝线,悬停时点亮拉丝
+ * ------------------------------------------------------------------------- */
+.jy-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgb(var(--jy-p-500)), #2cb1a6);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .jy-card-accent {
+  transform: scaleX(1);
+}
+
+/* 主 CTA 呼吸辉光(缓慢、克制的色律动) */
+@keyframes jy-pulse-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(var(--jy-p-500) / 0.35),
+      0 8px 24px rgb(var(--jy-p-500) / 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px rgb(var(--jy-p-500) / 0),
+      0 8px 30px rgb(var(--jy-p-500) / 0.45);
+  }
+}
+
+.animate-pulse-glow {
+  animation: jy-pulse-glow 2.6s ease-in-out infinite;
+}
+
+/* bento 卡内微演示:颗粒流(SMIL,见组件)+ 蜂巢负载波
+ * ------------------------------------------------------------------------- */
+@keyframes jy-wave {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.jy-wave-cell {
+  animation: jy-wave 2.8s ease-in-out infinite;
+}
+
+/* SMIL 颗粒:reduced-motion 时隐藏(动画本体无法用 CSS 暂停) */
+@media (prefers-reduced-motion: reduce) {
+  .jy-smil-packet {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 登录页:卡片升起 + 指针微倾斜(仅精确指针) + 输入框蜜琥珀聚焦环 + 蚁标轨道环
+ * ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+ * 色彩律动:品牌琥珀→信息素青的流动渐变字(全站每页最多一处动态渐变)
+ * ------------------------------------------------------------------------- */
+.jy-flow-text {
+  background: linear-gradient(
+    100deg,
+    rgb(var(--jy-p-600)) 0%,
+    rgb(var(--jy-p-400)) 30%,
+    #2cb1a6 55%,
+    rgb(var(--jy-p-500)) 82%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: jy-flow-hue 7s ease-in-out infinite alternate;
+}
+
+@keyframes jy-flow-hue {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* 静态渐变字(宣言面板等第二处,不闪不流) */
+.jy-glow-text-static {
+  background: linear-gradient(100deg, rgb(var(--jy-p-300)), #4fd1c5 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * 色带分区:柔琥珀渐变带,给页面纵向色彩节秦
+ * ------------------------------------------------------------------------- */
+.jy-band {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--jy-p-50) / 0.95),
+    rgb(var(--jy-p-50) / 0.35) 55%,
+    transparent
+  );
+}
+
+.dark .jy-band {
+  background: linear-gradient(
+    180deg,
+    rgb(var(--jy-p-900) / 0.3),
+    rgb(var(--jy-p-900) / 0.1) 55%,
+    transparent
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * 蚂蚁行军分隔线:全宽虚线缓行(页面节拍器)
+ * ------------------------------------------------------------------------- */
+.jy-ant-divider {
+  display: block;
+  width: 100%;
+  height: 3px;
+}
+
+.jy-ant-divider line {
+  stroke: rgb(var(--jy-p-500) / 0.5);
+  stroke-width: 2;
+  stroke-dasharray: 3 10;
+}
+
+/* ---------------------------------------------------------------------------
+ * 登录卡 v2:实底暖纸色(去 backdrop-blur,性能优先)+ 顶部琥珀→青条 + 深投影
+ * ------------------------------------------------------------------------- */
+.jy-auth-card {
+  position: relative;
+  overflow: hidden;
+  background: rgb(255 251 243 / 0.97);
+  border: 1px solid rgb(var(--jy-p-500) / 0.2);
+  box-shadow:
+    0 24px 70px rgb(54 46 35 / 0.16),
+    0 2px 8px rgb(54 46 35 / 0.06);
+  transform: perspective(900px) rotateX(var(--jy-tx, 0deg)) rotateY(var(--jy-ty, 0deg));
+  transition: transform 0.35s ease;
+  animation: jy-auth-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.12s backwards;
+  will-change: transform;
+}
+
+.dark .jy-auth-card {
+  background: rgb(26 21 15 / 0.97);
+  border-color: rgb(var(--jy-p-500) / 0.22);
+  box-shadow:
+    0 24px 70px rgb(0 0 0 / 0.55),
+    0 2px 8px rgb(0 0 0 / 0.3);
+}
+
+.jy-auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgb(var(--jy-p-500)), #2cb1a6 60%, rgb(var(--jy-p-300)));
+}
+
+/* 登录页漂移色斑:缓速 transform 动画,blur 一次性渲染后缓存 */
+.jy-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  will-change: transform;
+}
+
+.jy-blob-a {
+  width: 460px;
+  height: 460px;
+  top: -12%;
+  right: -10%;
+  background: radial-gradient(circle, rgb(var(--jy-p-400) / 0.5), transparent 70%);
+  animation: jy-drift-a 17s ease-in-out infinite alternate;
+}
+
+.jy-blob-b {
+  width: 380px;
+  height: 380px;
+  bottom: -14%;
+  left: -8%;
+  background: radial-gradient(circle, rgb(44 177 166 / 0.32), transparent 70%);
+  animation: jy-drift-b 23s ease-in-out infinite alternate;
+}
+
+@keyframes jy-drift-a {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-60px, 46px) scale(1.12);
+  }
+}
+
+@keyframes jy-drift-b {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(52px, -40px) scale(1.08);
+  }
+}
+
+@keyframes jy-auth-in {
+  from {
+    opacity: 0;
+    transform: perspective(900px) translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(900px) translateY(0) rotateX(var(--jy-tx, 0deg)) rotateY(var(--jy-ty, 0deg));
+  }
+}
+
+.jy-auth-card :is(input, select):focus {
+  border-color: rgb(var(--jy-p-500) / 0.55) !important;
+  box-shadow:
+    0 0 0 3px rgb(var(--jy-p-500) / 0.16),
+    0 0 18px rgb(var(--jy-p-500) / 0.12) !important;
+}
+
+.jy-orbit {
+  animation: jy-orbit-spin 28s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes jy-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 复制成功对勾弹出 / 蜂窝格错落浮现
+ * ------------------------------------------------------------------------- */
+@keyframes jy-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  55% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.jy-pop {
+  display: inline-flex;
+  animation: jy-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes jy-hex-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.jy-hex-in {
+  animation: jy-hex-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+/* ---------------------------------------------------------------------------
+ * 平台墙悬停
+ * ------------------------------------------------------------------------- */
+.jy-provider {
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.jy-provider:hover {
+  transform: translateY(-3px);
+  border-color: rgb(var(--jy-p-500) / 0.45);
+  box-shadow: 0 10px 26px rgb(var(--jy-p-500) / 0.14);
+}
+
+/* ---------------------------------------------------------------------------
+ * 后台壳:浮动侧边栏 + 悬浮顶栏(≥lg;与内容区留出呼吸间隔)
+ * ------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .sidebar {
+    top: 10px;
+    bottom: 10px;
+    left: 10px;
+    border-radius: 18px;
+    border: 1px solid rgb(54 46 35 / 0.09);
+    box-shadow: 0 10px 34px rgb(54 46 35 / 0.08);
+    /* 注意:不加 overflow:hidden —— 侧栏底部的主题菜单弹层(absolute bottom-full)不能被裁剪 */
+  }
+
+  .dark .sidebar {
+    border-color: rgb(255 255 255 / 0.07);
+    box-shadow: 0 10px 34px rgb(0 0 0 / 0.45);
+  }
+
+  .juyi-float-header {
+    top: 10px;
+    margin: 10px 10px 0;
+    border-radius: 16px;
+    border: 1px solid rgb(54 46 35 / 0.07);
+    box-shadow: 0 6px 22px rgb(54 46 35 / 0.06);
+  }
+
+  .dark .juyi-float-header {
+    border-color: rgb(255 255 255 / 0.07);
+    box-shadow: 0 6px 22px rgb(0 0 0 / 0.4);
+  }
+}
+
+/* 侧边栏细节:激活态蜜琥珀指示条 + 分组标题六角点 */
+.sidebar-link {
+  position: relative;
+}
+
+.sidebar-link-active::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 24%;
+  bottom: 24%;
+  width: 3px;
+  border-radius: 2px;
+  background: rgb(var(--jy-p-500));
+  box-shadow: 0 0 10px rgb(var(--jy-p-500) / 0.55);
+}
+
+.sidebar-section-title-text::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 7px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  background: rgb(var(--jy-p-400) / 0.75);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* ---------------------------------------------------------------------------
+ * reduced-motion:一切动效冻结为终态(覆盖上方全部关键帧)
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ant-path,
+  .ant-glow,
+  .jy-rise,
+  .jy-wave-cell,
+  .jy-pop,
+  .jy-hex-in,
+  .jy-orbit,
+  .jy-flow-text,
+  .jy-blob,
+  .animate-pulse-glow,
+  .jy-marquee-track {
+    animation: none;
+  }
+
+  .jy-rise,
+  .jy-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .jy-marquee-track {
+    flex-wrap: wrap;
+    width: auto;
+    justify-content: center;
+  }
+
+  .jy-auth-card {
+    animation: none;
+    transform: none;
+  }
 }

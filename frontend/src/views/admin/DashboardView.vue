@@ -19,8 +19,8 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {{ t('admin.dashboard.apiKeys') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
-                  {{ stats.total_api_keys }}
+                <p v-jy-count="{ to: stats.total_api_keys }" class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
+                  0
                 </p>
                 <p class="text-xs text-green-600 dark:text-green-400">
                   {{ stats.active_api_keys }} {{ t('common.active') }}
@@ -39,8 +39,8 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {{ t('admin.dashboard.accounts') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
-                  {{ stats.total_accounts }}
+                <p v-jy-count="{ to: stats.total_accounts }" class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
+                  0
                 </p>
                 <p class="text-xs">
                   <span class="text-green-600 dark:text-green-400"
@@ -64,8 +64,8 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {{ t('admin.dashboard.todayRequests') }}
                 </p>
-                <p class="text-xl font-bold text-gray-900 dark:text-white">
-                  {{ stats.today_requests }}
+                <p v-jy-count="{ to: stats.today_requests }" class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
+                  0
                 </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ t('common.total') }}: {{ formatNumber(stats.total_requests) }}
@@ -84,8 +84,11 @@
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {{ t('admin.dashboard.users') }}
                 </p>
-                <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                  +{{ stats.today_new_users }}
+                <p
+                  v-jy-count="{ to: stats.today_new_users, prefix: '+' }"
+                  class="text-xl font-bold text-emerald-600 tabular-nums dark:text-emerald-400"
+                >
+                  +0
                 </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ t('common.total') }}: {{ formatNumber(stats.total_users) }}

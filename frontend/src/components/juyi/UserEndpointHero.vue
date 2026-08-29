@@ -9,7 +9,7 @@
 
     <div class="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
       <!-- 问候 -->
-      <div>
+      <div class="jy-rise jy-d1">
         <div class="mb-1.5 flex items-center gap-2.5">
           <h2 class="text-xl font-bold text-gray-900 dark:text-white md:text-2xl">
             {{ greeting }}{{ displayName ? ',' + displayName : '' }}
@@ -27,9 +27,9 @@
       </div>
 
       <!-- 接入端点快速复制 -->
-      <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+      <div class="jy-rise jy-d2 flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <div
-          class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/80 py-2 pl-4 pr-2 dark:border-dark-600 dark:bg-dark-900/70"
+          class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/80 py-2 pl-4 pr-2 transition-shadow duration-300 hover:shadow-glow dark:border-dark-600 dark:bg-dark-900/70"
         >
           <div class="min-w-0">
             <p class="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-dark-500">
@@ -44,7 +44,9 @@
             class="ml-1 flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-primary-500/10 hover:text-primary-600 dark:hover:text-primary-400"
             :title="t('juyi.dash.endpoint')"
           >
-            <Icon :name="copied ? 'checkCircle' : 'copy'" size="sm" :class="copied ? 'text-primary-500' : ''" />
+            <span :key="copied ? 'y' : 'n'" class="jy-pop">
+              <Icon :name="copied ? 'checkCircle' : 'copy'" size="sm" :class="copied ? 'text-primary-500' : ''" />
+            </span>
           </button>
         </div>
         <div class="flex items-center gap-2">
@@ -64,6 +66,16 @@
         </div>
       </div>
     </div>
+
+    <!-- 底部行军蚁线:请求在流动 -->
+    <svg
+      class="pointer-events-none absolute bottom-0 left-0 h-[2.5px] w-full"
+      viewBox="0 0 600 3"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <line x1="0" y1="1.5" x2="600" y2="1.5" vector-effect="non-scaling-stroke" class="ant-path" opacity="0.55" />
+    </svg>
   </div>
 </template>
 

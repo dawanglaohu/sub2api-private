@@ -3,7 +3,8 @@ export default {
   juyi: {
     home: {
       eyebrow: 'Subscription Aggregation Gateway',
-      heroTitle: 'Turn subscriptions into one API.',
+      heroTitleA: 'Turn subscriptions into',
+      heroTitleB: ' one API.',
       heroDesc:
         'JuYi pools multiple AI subscription accounts into one stable endpoint: one key, swarm scheduling, usage-based billing.',
       pipelineCaption: 'Subscription sources → JuYi scheduling core → unified API endpoint',
@@ -43,6 +44,11 @@ export default {
         a2: 'The calling convention is identical — only the base_url points to JuYi. JuYi schedules your request across the subscription pool and fails over automatically.',
         q3: 'Are my keys and data safe?',
         a3: 'Keys are used only for gateway auth and can be revoked anytime. Request content is not persisted; only usage metadata (model, tokens, latency) is recorded.'
+      },
+      manifesto: {
+        titleA: 'One ant is fragile.',
+        titleB: ' A colony moves anything.',
+        sub: 'Every subscription is a worker ant. JuYi drills them into a logistics corps that never clocks out and carries every call.'
       },
       poweredBy: 'Built on the open-source project Sub2API'
     },

@@ -3,7 +3,8 @@ export default {
   juyi: {
     home: {
       eyebrow: '订阅聚合网关',
-      heroTitle: '把订阅，聚成 API。',
+      heroTitleA: '把订阅，',
+      heroTitleB: '聚成 API。',
       heroDesc: '聚蚁把多个 AI 订阅账号汇成一个稳定端点：统一密钥、蚁群调度、按量计费。',
       pipelineCaption: '多个订阅源 → 聚蚁调度核心 → 统一 API 端点',
       steps: {
@@ -42,6 +43,11 @@ export default {
         a2: '调用方式完全一致，只是 base_url 指向聚蚁。聚蚁在后端把请求调度到订阅账号池，单账号限流或故障时自动切换。',
         q3: '密钥和数据安全吗？',
         a3: '密钥仅用于网关鉴权，可随时吊销重建；请求内容不做持久化留存，仅记录用量元数据（模型、Token 数、耗时）。'
+      },
+      manifesto: {
+        titleA: '一只蚂蚁很脆弱，',
+        titleB: '一个蚁群什么都搬得动。',
+        sub: '每一份订阅都是一只工蚁；聚蚁把它们编成一队永不下班的后勤兵，扛住每一次调用。'
       },
       poweredBy: '基于开源项目 Sub2API 构建'
     },
