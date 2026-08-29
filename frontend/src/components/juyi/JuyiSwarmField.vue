@@ -42,14 +42,15 @@
         <path class="jy-ant-trail-line" d="M -9.6 0 Q -14.6 -0.6 -19.6 -0.2" />
         <!-- 六足:tripod A = 左前/右中/左后,tripod B = 右前/左中/右后,两组反相半个周期。
              角度刻意不均分 —— 前足朝前、中足侧展、后足朝后,轮廓呈前后拉长的纺锤形;
-             六条腿均匀放射会立刻读成蜘蛛 -->
+             六条腿均匀放射会立刻读成蜘蛛。
+             足端距基节约 10 单位:腿短了步幅就小,步频被迫拉高,腿就糊成一团抖动 -->
         <g class="jy-ant-legs" style="stroke: var(--jy-ant-leg)" stroke-width="1" fill="none" stroke-linecap="round">
-          <g transform="translate(4, -1)"><path class="jy-leg jy-leg--l jy-leg--a" d="M 0 0 L 4.6 -3.4 L 9.4 -4.6" /></g>
-          <g transform="translate(4, 1)"><path class="jy-leg jy-leg--r jy-leg--b" d="M 0 0 L 4.6 3.4 L 9.4 4.6" /></g>
-          <g transform="translate(0.5, -1.4)"><path class="jy-leg jy-leg--l jy-leg--b" d="M 0 0 L 1.2 -5 L 1.6 -8.4" /></g>
-          <g transform="translate(0.5, 1.4)"><path class="jy-leg jy-leg--r jy-leg--a" d="M 0 0 L 1.2 5 L 1.6 8.4" /></g>
-          <g transform="translate(-3.4, -1.6)"><path class="jy-leg jy-leg--l jy-leg--a" d="M 0 0 L -3.2 -4.4 L -8.2 -6.2" /></g>
-          <g transform="translate(-3.4, 1.6)"><path class="jy-leg jy-leg--r jy-leg--b" d="M 0 0 L -3.2 4.4 L -8.2 6.2" /></g>
+          <g transform="translate(4, -1)"><path class="jy-leg jy-leg--l jy-leg--a" d="M 0 0 L 4.6 -3.4 L 9 -4.4" /></g>
+          <g transform="translate(4, 1)"><path class="jy-leg jy-leg--r jy-leg--b" d="M 0 0 L 4.6 3.4 L 9 4.4" /></g>
+          <g transform="translate(0.5, -1.4)"><path class="jy-leg jy-leg--l jy-leg--b" d="M 0 0 L 1.6 -4.6 L 1.4 -9" /></g>
+          <g transform="translate(0.5, 1.4)"><path class="jy-leg jy-leg--r jy-leg--a" d="M 0 0 L 1.6 4.6 L 1.4 9" /></g>
+          <g transform="translate(-3.4, -1.6)"><path class="jy-leg jy-leg--l jy-leg--a" d="M 0 0 L -3.4 -4.6 L -8.6 -6.4" /></g>
+          <g transform="translate(-3.4, 1.6)"><path class="jy-leg jy-leg--r jy-leg--b" d="M 0 0 L -3.4 4.6 L -8.6 6.4" /></g>
         </g>
         <!-- 躯体:随步态起伏 + 微幅左右扭动(腿在组外,自己摆) -->
         <g class="jy-ant-body">
@@ -112,10 +113,12 @@
       :opacity="a.planeOpacity"
     >
       <use href="#jy-ant-shape" />
-      <!-- 驮着的数据颗粒:压在胸背上方(原来画在头前 9,-4.6 更像举着),跟着躯体一起颠 -->
+      <!-- 驮着的数据颗粒:压在胸背上方(原来画在头前 9,-4.6 更像举着),跟着躯体一起颠。
+           光晕半径必须小于蚁体:v4.1 之前是 5.6,随蚁体放大后整个上半身被罩成一团亮斑,
+           虫的轮廓全糊了 —— 这是「看着抽象」的主因,不是腿的问题 -->
       <g v-if="a.grain" class="jy-ant-grain">
-        <circle cx="0.4" cy="-3.9" r="5.6" fill="url(#jy-grain-glow)" />
-        <circle cx="0.4" cy="-3.9" r="1.5" fill="#fff3d6" />
+        <circle cx="0.2" cy="-4.8" r="3.4" fill="url(#jy-grain-glow)" />
+        <circle cx="0.2" cy="-4.8" r="0.95" fill="#fff3d6" />
       </g>
     </g>
   </svg>
@@ -135,7 +138,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
-    /** 蚂蚁数量基准(实际 = density/3.2,约 12-17 只) */
+    /** 蚂蚁数量基准(实际 = density/4.2,约 10-13 只;v4.1 蚁体放大后同步减量) */
     density?: number
     /** 是否绘制巢房六边形 */
     showHex?: boolean
@@ -170,17 +173,20 @@ interface Ant {
 const VBW = 1440
 const VBH = 900
 const PLANES = [
-  { scale: 0.62, opacity: 0.55 },
-  { scale: 0.92, opacity: 0.78 },
-  { scale: 1.28, opacity: 1 }
+  { scale: 0.82, opacity: 0.55 },
+  { scale: 1.15, opacity: 0.78 },
+  { scale: 1.55, opacity: 1 }
 ]
 /** 腿摆一个完整周期,身体前进多少 viewBox 单位(scale=1 时)。
- *  与腿几何绑死:足端距基节平均约 6.7 单位、摆幅 ±22° → 行程 ≈ 2×6.7×sin22° ≈ 5.0。
+ *  与腿几何绑死:足端距基节平均约 9.9 单位、摆幅 ±28° → 行程 ≈ 2×9.9×sin28° ≈ 9.3。
  *  改腿长或摆幅就要一起改这里,否则脚会打滑。 */
-const STRIDE_UNITS = 5
-/** scale=1 时的线速度基准。与 STRIDE_UNITS 一起把步频定在 8-11Hz:
- *  60fps 下 5-7 帧一个周期,看得清迈步又不至于慢成慢动作 */
-const BASE_LIN_SPEED = 48
+const STRIDE_UNITS = 9.3
+/** scale=1 时的线速度基准。步频 = STRIDE_UNITS/BASE_LIN_SPEED(与 scale 无关),
+ *  这里定在 ~4.2Hz,60fps 下 14 帧一个周期。
+ *  v4.1:上一版 8-11Hz 看着就是一团高频抖动,迈步要看清每周期得有十几帧。
+ *  但步频压下来必须同步放大步幅(腿加长 + 摆幅 22°→28°)与蚁体 scale,
+ *  否则慢步频 × 小步幅 = 线速度掉到 25 单位/秒,蚂蚁看着像钉在原地 */
+const BASE_LIN_SPEED = 40
 const GAIT_MIN = 0.07
 const GAIT_MAX = 0.3
 
@@ -320,7 +326,7 @@ function deliver() {
 }
 
 function buildAnts() {
-  const total = Math.max(8, Math.min(18, Math.round(props.density / 3.2)))
+  const total = Math.max(7, Math.min(14, Math.round(props.density / 4.2)))
   const list: Ant[] = []
   for (let i = 0; i < total; i++) {
     const plane = i % 5 === 0 ? 2 : i % 3 === 0 ? 0 : 1
@@ -352,8 +358,9 @@ function frame(ts: number) {
   lastRender = ts
   for (let i = 0; i < ants.value.length; i++) {
     const a = ants.value[i]
-    // 走停节奏:±12% 的低频速度调制。步频是常量,幅度再大脚就会打滑,所以到此为止
-    const pace = 1 + 0.12 * Math.sin(ts / 1000 * 1.7 + a.pacePhase)
+    // 走停节奏:±8% 的低频速度调制。步频是常量,幅度再大脚就会打滑;
+    // 步频降到 4Hz 后每周期有十几帧,打滑比高频时更容易被看见,故比上一版收窄
+    const pace = 1 + 0.08 * Math.sin((ts / 1000) * 1.5 + a.pacePhase)
     // 线速度 → 参数速度:除以当前路径弧长,短路上 t 自然推进得快
     a.t += ((a.linSpeed * pace) / (pathLens[a.path] || 1200)) * dt
     if (a.t >= 1) {
@@ -491,30 +498,30 @@ onUnmounted(() => {
 /* 一个周期 = 着地推进(0→62%,腿相对身体后移)+ 抬起前摆(62→100%,略缩短模拟离地) */
 @keyframes jy-gait-l {
   0% {
-    transform: rotate(22deg);
+    transform: rotate(28deg);
   }
   62% {
-    transform: rotate(-22deg) scale(1);
+    transform: rotate(-28deg) scale(1);
   }
   78% {
-    transform: rotate(-6deg) scale(0.88);
+    transform: rotate(-9deg) scale(0.86);
   }
   100% {
-    transform: rotate(22deg) scale(1);
+    transform: rotate(28deg) scale(1);
   }
 }
 @keyframes jy-gait-r {
   0% {
-    transform: rotate(-22deg);
+    transform: rotate(-28deg);
   }
   62% {
-    transform: rotate(22deg) scale(1);
+    transform: rotate(28deg) scale(1);
   }
   78% {
-    transform: rotate(6deg) scale(0.88);
+    transform: rotate(9deg) scale(0.86);
   }
   100% {
-    transform: rotate(-22deg) scale(1);
+    transform: rotate(-28deg) scale(1);
   }
 }
 /* 躯体:纵向颠簸走两拍(每半步一颠),左右扭动走一拍 */
