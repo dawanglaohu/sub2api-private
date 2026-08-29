@@ -50,7 +50,7 @@
         </template>
       </div>
 
-      <!-- Card Container v2:实底暖纸 + 顶部琥珀青条 + 升起入场 + 指针微倾斜(去 backdrop-blur,性能优先)
+      <!-- Card Container v2:实底暖纸 + 升起入场 + 指针微倾斜(去 backdrop-blur,性能优先)
            v4:左右各一只蚁巢哨兵。卫兵挂在这层 relative 容器上而不是卡片内,
            否则会跟着卡片的指针倾斜一起歪;窄屏(<md)两侧没有余量,直接不渲染 -->
       <div class="jy-auth-guarded relative">

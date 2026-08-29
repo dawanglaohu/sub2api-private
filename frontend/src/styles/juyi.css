@@ -458,16 +458,6 @@
     0 2px 8px rgb(0 0 0 / 0.3);
 }
 
-.jy-auth-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, rgb(var(--jy-p-500)), #2cb1a6 60%, rgb(var(--jy-p-300)));
-}
-
 /* 登录页漂移色斑:缓速 transform 动画,blur 一次性渲染后缓存 */
 .jy-blob {
   position: absolute;
