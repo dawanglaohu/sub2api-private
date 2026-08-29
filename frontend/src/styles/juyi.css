@@ -116,6 +116,8 @@
   --jy-ant-h2: #2f1e0a;
   --jy-ant-leg: #3a2a12;
   --jy-ant-shadow: rgb(30 22 10 / 0.16);
+  /* 哨兵(JuyiAntSentry)的卡通描边:亮色下与 leg 同色即可 */
+  --jy-ant-stroke: #3a2a12;
 }
 
 .dark {
@@ -128,6 +130,8 @@
   --jy-ant-h2: #7a5012;
   --jy-ant-leg: #f0bc60;
   --jy-ant-shadow: rgb(0 0 0 / 0.4);
+  /* 暗色下 leg 是亮琥珀,拿来当描边会和金色躯体糊成一团 —— 哨兵单独用深褐 */
+  --jy-ant-stroke: #5a3a0c;
 }
 
 [data-jy-font='serif'] {

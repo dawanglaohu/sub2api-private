@@ -50,14 +50,20 @@
         </template>
       </div>
 
-      <!-- Card Container v2:实底暖纸 + 顶部琥珀青条 + 升起入场 + 指针微倾斜(去 backdrop-blur,性能优先) -->
-      <div
-        ref="cardRef"
-        class="jy-auth-card rounded-2xl p-8"
-        @pointermove="onCardMove"
-        @pointerleave="onCardLeave"
-      >
-        <slot />
+      <!-- Card Container v2:实底暖纸 + 顶部琥珀青条 + 升起入场 + 指针微倾斜(去 backdrop-blur,性能优先)
+           v4:左右各一只蚁巢哨兵。卫兵挂在这层 relative 容器上而不是卡片内,
+           否则会跟着卡片的指针倾斜一起歪;窄屏(<md)两侧没有余量,直接不渲染 -->
+      <div class="jy-auth-guarded relative">
+        <JuyiAntSentry v-if="showSentries" side="left" class="jy-sentry-slot jy-sentry-slot--l" />
+        <JuyiAntSentry v-if="showSentries" side="right" class="jy-sentry-slot jy-sentry-slot--r" />
+        <div
+          ref="cardRef"
+          class="jy-auth-card rounded-2xl p-8"
+          @pointermove="onCardMove"
+          @pointerleave="onCardLeave"
+        >
+          <slot />
+        </div>
       </div>
 
       <!-- Footer Links -->
@@ -74,12 +80,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 import JuyiSwarmField from '@/components/juyi/JuyiSwarmField.vue'
+import JuyiAntSentry from '@/components/juyi/JuyiAntSentry.vue'
 
 const appStore = useAppStore()
+
+// 哨兵要占卡片两侧各约 150px。窄于 900px 就没有余量,与其压着卡片不如不出场
+const showSentries = ref(false)
+let mqSentry: MediaQueryList | null = null
+function syncSentries() {
+  showSentries.value = !!mqSentry?.matches
+}
 
 // 指针微倾斜:仅精确指针 + 未开启 reduced-motion 时生效,幅度克制(±2.5°)
 const cardRef = ref<HTMLElement | null>(null)
@@ -104,7 +118,14 @@ onMounted(() => {
   tiltEnabled =
     window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
     !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  mqSentry = window.matchMedia('(min-width: 900px)')
+  syncSentries()
+  mqSentry.addEventListener('change', syncSentries)
   appStore.fetchPublicSettings()
+})
+
+onUnmounted(() => {
+  mqSentry?.removeEventListener('change', syncSentries)
 })
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
@@ -118,5 +139,31 @@ const currentYear = computed(() => new Date().getFullYear())
 <style scoped>
 .text-gradient {
   @apply bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent;
+}
+
+/* 哨兵:脚底与卡片底边对齐,站在卡片两侧守着巢门。
+   pointer-events 全关 —— 它是装饰,绝不能挡住表单的点击 */
+.jy-sentry-slot {
+  position: absolute;
+  bottom: -6px;
+  pointer-events: none;
+  z-index: 1;
+}
+.jy-sentry-slot--l {
+  right: calc(100% + 18px);
+}
+.jy-sentry-slot--r {
+  left: calc(100% + 18px);
+}
+@media (min-width: 1100px) {
+  .jy-sentry-slot {
+    bottom: -10px;
+  }
+  .jy-sentry-slot--l {
+    right: calc(100% + 28px);
+  }
+  .jy-sentry-slot--r {
+    left: calc(100% + 28px);
+  }
 }
 </style>
