@@ -12,11 +12,13 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-08-29)
+## 当前状态(2026-08-30)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-8ef64720`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
-- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 实测 51 文件,**R14 起 57 文件**:+JuyiSwarmField/useJuyiReveal/juyiCount/AppHeader/AppLayout/.gitignore,−JuyiSwarmCanvas;docs/知识库另计)
-- 回滚位:`custom-ff078d86`(v0.1.183 + R13 版 UI,见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-84b8240d`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
+- ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
+  上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
+- 回滚位:`custom-8ef64720`(v0.1.183 + R14 UI,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -37,17 +39,49 @@
    ```
    出事:`update-from-ghcr.sh rollback`(可再次执行切回)。`status` 看全景。
 3. **merge 冲突时**(CI 红灯):本地 `git fetch upstream --tags && git checkout custom && git merge v0.1.x`。
-   解冲突唯一原则:**二开清单文件取 ours,其余一切取 theirs**(setting_handler_update.go 手工保留 ext: 11 行)。
+   解冲突默认原则:**二开清单文件取 ours,其余一切取 theirs**(setting_handler_update.go 手工保留 ext: 11 行)。
+   **但「取 ours」只对纯品牌/装饰类改动成立** —— 我们碰了上游功能代码的地方必须逐个手术,见下方
+   「监控页 V2 合并策略」(R15 起,这是全项目冲突风险最高的一块)。
    **两个例外(R13)**:① 取 ours 前先用 `git diff <上一tag> HEAD -- <file>` 看净差异形态,
    若只是被摁住的上游版本号/被删的上游步骤(不是品牌或功能改动),那是历史残留,取 theirs 反而根除复发;
    ② "双方各加一行 import"型冲突要**保留双方**(如 AppSidebar 的 JuyiAppearanceMenu + 上游 Icon)。
    解完硬校验:`git diff v0.1.x --name-only --staged` 必须只剩二开清单+setting_handler_update.go,
-   多出的文件 `git checkout v0.1.x -- <f>` 强制对齐。前端 `pnpm run build` 过了再提交。
+   多出的文件 `git checkout v0.1.x -- <f>` 强制对齐。前端 `pnpm run build` 过了再提交,
+   **动过 channel-monitor-v2 的话还要 `pnpm vitest run src/features/channel-monitor-v2`(49 个)**。
    **推送顺序铁律:先 `git push private v0.1.x`(tag),后 `git push private custom`(分支)**——
    分支 push 立刻触发构建,tag 晚到 CI 的 `git describe` 就取旧 tag,镜像自报旧版本号
    (R8/R9 各踩一次;标错了去 Actions 手动 Run workflow 勾 force_build 重建)。
    部署前可验版本:`docker run --rm --entrypoint sh <镜像> -c 'strings /app/sub2api | grep -xE "0\.1\.[0-9]+"'`。
 4. 镜像标签:`custom-<sha8>`(不可变,生产用)/ `v<版本>-custom` / `custom-latest`(移动,生产禁用)。
+
+## 监控页 V2 合并策略(R15 新增,上游一动这块就要看这里)
+
+**为什么单列**:R15 之前二开只碰过 1 个后端文件(setting_handler_update.go,纯校验放行)。
+R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `ChannelStatusV2View.vue`
+(净减 848 行)。而 channel-monitor-v2 是**上游正在活跃迭代的新功能**——
+无脑 `取 ours` 会静默丢掉上游的修复,无脑 `取 theirs` 会把整个页面打回原形。
+这两种错都不会报错,只会在生产上变成「页面回到官方样子」或「监控数据不对」。
+
+| 文件 | 冲突时怎么办 |
+|---|---|
+| `backend/internal/service/channel_monitor_v2.go` | **不要整文件取 ours。**我们只改了 `ParseFilter` 的桶映射(24h→5min、新增 3d→15min、7d→1h,约 14 行)。取 theirs 后**只把这段 case 分支重新贴回去**,其余全部让上游赢 |
+| `backend/internal/service/channel_monitor_v2_test.go` | 同上:只保我们新增的 3 段断言(24h/3d/7d),其余取 theirs |
+| `frontend/src/api/channelMonitorV2.ts` | 我们只在 `MonitorRange` 联合类型里加了 `'3d'`。**取 theirs 再补回 `'3d'`**,别取 ours(会丢上游新增的字段/类型) |
+| `frontend/src/views/user/ChannelStatusV2View.vue` | **取 ours**(整页是我们重写的),但必须 `git log <旧tag>..<新tag> -- <file>` 看上游动了什么:若上游新增了接口字段或查询参数,要**手工移植进我们的版本**,否则页面会调用一个已经改签名的 API |
+| `frontend/src/features/channel-monitor-v2/{ModelStatusCard.vue,modelStatus.ts}` | 纯新增文件,上游没有同名文件,通常不冲突。**但它们依赖上游的 API 响应结构**,上游改了 `MonitorRow`/`buckets` 形状就要跟着改 |
+| `frontend/src/features/channel-monitor-v2/__tests__/*` | `designSystem.structure.spec.ts` 是**改上游的**(取 ours);另两个 spec 是新增的 |
+| `frontend/src/i18n/locales/{zh,en}/channelMonitorV2.ts` | 「双方各加文案」型冲突,**保留双方**(同 R13 的 AppSidebar) |
+| `frontend/mock-monitor-server.mjs` | 纯二开新增,不进构建产物,冲突不可能;上游改了响应结构记得同步它,否则本地 mock 会骗人 |
+
+**三条不能丢的业务约束**(改这块前先读,它们是踩过坑才有的):
+1. **活跃判定只能用 `buckets` 存在性 + score,绝不能用 `request_count`** —— 非管理员响应会把绝对请求数清零,
+   用它判断会让普通用户看到一片空白。这条最容易在合并时被上游版本覆盖掉。
+2. **色带固定 60 块**(`downsampleMonitorSlots` 全窗口均匀降采样,组大小差 ≤1,健康取组内最差),
+   任何时间范围都全窗口覆盖、无横向滚动。上游若改回「每桶一格」会撑破卡片。
+3. **查询失败只展示陈旧提示,不得渲染成「健康」**,否则是在误报。
+
+完整设计与代码位置见 `docs/聚蚁-sub2api-开发文档/图谱/任务/M8-T1.md`。
+
 
 ## 铁律
 
@@ -214,6 +248,31 @@
   smoke(额外 curl 烟测栈 assets grep `juyi-float-header`/`jy-count` 确认新前端真进了镜像)→
   备份 318M(sub2api-20260829-024738.sql.gz)→ switch → smoke-down;回滚位落到 `custom-ff078d86`
 
+**R15(2026-08-30)监控页 V2 重设计(首次改上游业务代码)+ 登录页哨兵 + 蚁群步态**
+- **监控页 V2**(用户四轮迭代):移除筛选/状态栏 → 时间范围块(24h/3d/7d);按平台分组、每模型一张
+  诊断卡;指标改 metric-chip 小方块。逻辑从视图抽到 `modelStatus.ts` + `ModelStatusCard.vue`,
+  视图净减 848 行。后端 `ParseFilter` 桶映射同步扩展:24h 1h→**5min**(288 格,命中固定 5m rollup)、
+  新增 **3d→15min**(从 1m facts 重分箱)、7d 12h→**1h**(骑 1h rollup)
+- **这是二开第一次改上游业务逻辑**,合并风险从此不同:后端文件 1 → 3,且 channel-monitor-v2 是
+  上游活跃迭代区。**专门写了「监控页 V2 合并策略」一节**(逐文件说明取 ours / 取 theirs / 手工移植),
+  以及三条不能丢的业务约束(活跃判定用 buckets 存在性而非 request_count、色带固定 60 块、
+  查询失败不得渲染成健康)。**下次合上游动到这块,先读那一节再动手**
+- **登录页哨兵** `JuyiAntSentry.vue`:卡片左右各一只卡通蚂蚁卫兵(六角蜂蜡盔+信息素长矛),
+  六个交互状态 —— 点普通框低头看、点密码框捂眼、点「显示密码」从指缝偷看(MutationObserver 盯 type)、
+  输入时触角快抖、提交时举矛敬礼、待机呼吸/眨眼/瞳孔跟随指针。
+  **零侵入**:全靠 document 级事件委托,LoginView(745 行)/RegisterView(1076 行)一行未改;
+  挂在 AuthLayout 上,登录/注册/找回密码三页通吃。`<900px` 不渲染(两侧无余量)
+- 蚁群步态 v4:六足改交替三角步态,**步频由线速度反推**(步幅÷线速度)而非拍脑袋定常数,否则必打滑;
+  速度模型从「每秒推进多少 t」改成恒定线速度(9 条路径弧长从 ~550 差到 ~1800,按 t 匀速会让短路上
+  线速度只有长路 1/3)。首版 8-11Hz 被用户判为"太快、抽象"——每周期只有 5-7 帧,人眼读到的是抖动;
+  降到 ~4.2Hz(14 帧/周期),同时放大步幅与蚁体,否则慢步频×小步幅=看着像钉在原地。
+  **「抽象」的真正主因不是腿,是驮的光粒光晕半径 5.6 把上半身罩成亮斑**,收到 3.4 后轮廓立刻清晰
+- 去掉登录卡顶部 3px 渐变彩条(用户:"AI 味太重")——与"卡片侧边彩条"同类的 AI 生成痕迹
+- 新增 `--jy-ant-stroke`:暗色下 `--jy-ant-leg` 是亮琥珀,直接当描边会和金色躯体糊成一团
+- 落地:CI run 84b8240d 绿灯 → 镜像 `custom-84b8240d` → pull → `strings` 验版本 0.1.183 →
+  smoke → 备份 → switch → smoke-down;回滚位落到 `custom-8ef64720`。
+  验证:前端 49 个监控单测 + `pnpm run build` 全过;本地无 Go,后端靠 CI 的 docker build 兜编译
+
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
 - **跟主题(品牌位)**:按钮/链接/激活态/复选框/分组徽章/容量活跃态/图表主色/表格底色
@@ -224,22 +283,37 @@
 
 新增:`styles/juyi.css`(字体+主题变量+hex/蚁径动画+R14 入场动效)、`assets/fonts/*.woff2`、
 `components/brand/BrandMark.vue`、`components/home/AntTrailPipeline.vue`、`views/home/JuyiHome.vue`、
-`components/juyi/{UserEndpointHero,HiveAccountGrid,JuyiSwarmField,JuyiAppearanceMenu}.vue`
-(R14:JuyiSwarmField 取代已删除的 JuyiSwarmCanvas)、
+`components/juyi/{UserEndpointHero,HiveAccountGrid,JuyiSwarmField,JuyiAppearanceMenu,JuyiAntSentry}.vue`
+(R14:JuyiSwarmField 取代已删除的 JuyiSwarmCanvas;R15:JuyiAntSentry 登录页哨兵)、
 `composables/{useJuyiAppearance,useJuyiReveal}.ts`、`directives/juyiCount.ts`、
 `i18n/locales/{zh,en}/juyi.ts`、`public/logo.svg`、
 `deploy/juyi/{update-from-ghcr.sh,smoke-compose.yml,seed-buy-menu.sql}`、
-`docs/聚蚁-sub2api-开发文档/`(知识库,需 .gitignore 开洞放行)
+`docs/聚蚁-sub2api-开发文档/`(知识库,需 .gitignore 开洞放行)、
+**R15 监控页**:`features/channel-monitor-v2/{ModelStatusCard.vue,modelStatus.ts}`、
+`features/channel-monitor-v2/__tests__/{ModelStatusCard,modelStatus}.spec.ts`、
+`frontend/mock-monitor-server.mjs`(dev mock,不进构建产物)
 
 修改:`tailwind.config.js`(变量化 primary/暖 dark/字体/阴影渐变)、`main.ts`(+5行:juyi.css + v-jy-count)、
 `index.html`(favicon)、`.gitignore`(docs 白名单 + .finesse/)、
 `views/HomeView.vue`(壳)、`views/{user,admin}/DashboardView.vue`(各插1组件)、`i18n/*/index.ts`(+1行)、
-`components/layout/AppSidebar.vue`(ext:外链+外观菜单)、`components/layout/AuthLayout.vue`(动效背景)、
+`components/layout/AppSidebar.vue`(ext:外链+外观菜单)、`components/layout/AuthLayout.vue`(动效背景+R15 哨兵挂载)、
 `components/layout/AppHeader.vue`(R14 浮动头 1 class)、`components/layout/AppLayout.vue`(R14 主列 margin)、
 `components/common/VersionBadge.vue`(封更新)、`components/common/DataTable.vue`(暖化)、
 `components/common/GroupBadge.vue`、`components/account/AccountCapacityCell.vue`、
 `components/layout/__tests__/docUrlSanitization.spec.ts`(R14 改指 JuyiHome)、
 `.github/workflows/custom-build.yml`;另有 GroupsView/UsersView/图表等 sed 式颜色收编
+
+**R15 起碰了上游功能代码(冲突处理见上方「监控页 V2 合并策略」,不能无脑取 ours)**:
+`backend/internal/service/channel_monitor_v2.go`(ParseFilter 桶映射 ~14 行)、
+`backend/internal/service/channel_monitor_v2_test.go`(3 段断言)、
+`frontend/src/views/user/ChannelStatusV2View.vue`(整页重写,−848 行)、
+`frontend/src/api/channelMonitorV2.ts`(MonitorRange 加 `'3d'`)、
+`frontend/src/i18n/locales/{zh,en}/channelMonitorV2.ts`(各 +20 行文案)、
+`frontend/src/features/channel-monitor-v2/__tests__/designSystem.structure.spec.ts`
+
+> **二开面积:R13 51 → R14 57 → R15 70 文件**(docs/ 知识库另计)。
+> 硬校验口径:`git diff v0.1.x --name-only | grep -v '^"docs/'` 应等于本清单。
+> 后端从 1 个文件变成 3 个,合并风险等级随之上升——别再当成"纯前端二开"。
 
 ## 本地开发
 
