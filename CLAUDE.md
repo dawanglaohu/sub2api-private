@@ -12,11 +12,11 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-08-25)
+## 当前状态(2026-08-29)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-ff078d86`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
-- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(**2026-08-25 实测 51 文件**,R13 起 3 个 disabled workflow 已对齐上游不再计入)
-- 回滚位:`custom-5a262630`(v0.1.176,见 `/opt/sub2api-tool/previous-image`)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-8ef64720`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 实测 51 文件,**R14 起 57 文件**:+JuyiSwarmField/useJuyiReveal/juyiCount/AppHeader/AppLayout/.gitignore,−JuyiSwarmCanvas;docs/知识库另计)
+- 回滚位:`custom-ff078d86`(v0.1.183 + R13 版 UI,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -193,6 +193,27 @@
   回滚位落到 `custom-5a262630`。验收:内部 8181 HTTP 200 + title「聚蚁」、logo.svg 200、日志零 error、
   本机 Playwright 打开 vvct.site 落地页完整。**别忘了 `smoke-down` 清理烟测栈**(3 个容器会一直挂着)
 
+**R14(2026-08-29)UI 二次改版上线(纯二开发布,不涉上游合并)**
+- 内容:JuyiSwarmCanvas 退役→新增 `JuyiSwarmField`(可控密度/强度/蜂巢锚点,AuthLayout 与 JuyiHome 共用);
+  AntTrailPipeline 蚁径管线重做;新增 `composables/useJuyiReveal.ts`(滚动入场)与
+  `directives/juyiCount.ts`(KPI 数字滚动,main.ts 注册 `v-jy-count`);juyi.css +529 行动效变量;
+  UserEndpointHero/HiveAccountGrid/admin DashboardView 视觉对齐。**未加任何 npm 依赖**(铁律 2 保持)
+- 新碰 2 个上游文件,都是小而准插入:`AppHeader.vue`(+`juyi-float-header` class 1 处)、
+  `AppLayout.vue`(浮动侧栏留 10px 间隙,主列 margin 72/256 → 92/276)。二开面积 51 → **57 文件**
+- `docUrlSanitization.spec.ts` 改指 JuyiHome:该测试自 R1 起就该改——HomeView 已壳化,
+  doc_url 清洗逻辑搬到了 JuyiHome,测试却仍读 HomeView.vue(读的是空壳,断言形同虚设)。
+  **CI 不跑前端单测,这类失效测试只能靠本地 `pnpm vitest run` 发现**
+- 同时提交 `docs/聚蚁-sub2api-开发文档/` 知识库(110 文件):上游 `.gitignore` 的 `docs/*` 会吞掉它,
+  需在其后加 `!docs/聚蚁-sub2api-开发文档/` + `!docs/聚蚁-sub2api-开发文档/**` 两行开洞
+  (只放行子文件不放行目录则无效)
+- **纯二开发布走 push 触发,不是等每日定时**:push custom → CI `Sync` 步跳过(`if: event != push`)→
+  直接构建。版本号仍由 `git describe` 取 v0.1.183,故镜像别名 `v0.1.183-custom` 会移到新 sha
+  (生产只认不可变的 `custom-<sha8>`,无影响)。注意 workflow 的 `paths-ignore: ['**.md','docs/**']`——
+  **只改文档的 push 不会触发构建**,本次因同 push 含 .vue 才触发
+- 落地:CI run 33229326999 绿灯(7m37s)→ 镜像 `custom-8ef64720` → pull → `strings` 验版本 0.1.183 →
+  smoke(额外 curl 烟测栈 assets grep `juyi-float-header`/`jy-count` 确认新前端真进了镜像)→
+  备份 318M(sub2api-20260829-024738.sql.gz)→ switch → smoke-down;回滚位落到 `custom-ff078d86`
+
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
 - **跟主题(品牌位)**:按钮/链接/激活态/复选框/分组徽章/容量活跃态/图表主色/表格底色
@@ -201,17 +222,23 @@
 
 ## 二开文件清单
 
-新增:`styles/juyi.css`(字体+主题变量+hex/蚁径动画)、`assets/fonts/*.woff2`、
+新增:`styles/juyi.css`(字体+主题变量+hex/蚁径动画+R14 入场动效)、`assets/fonts/*.woff2`、
 `components/brand/BrandMark.vue`、`components/home/AntTrailPipeline.vue`、`views/home/JuyiHome.vue`、
-`components/juyi/{UserEndpointHero,HiveAccountGrid,JuyiSwarmCanvas,JuyiAppearanceMenu}.vue`、
-`composables/useJuyiAppearance.ts`、`i18n/locales/{zh,en}/juyi.ts`、`public/logo.svg`、
-`deploy/juyi/{update-from-ghcr.sh,smoke-compose.yml,seed-buy-menu.sql}`
+`components/juyi/{UserEndpointHero,HiveAccountGrid,JuyiSwarmField,JuyiAppearanceMenu}.vue`
+(R14:JuyiSwarmField 取代已删除的 JuyiSwarmCanvas)、
+`composables/{useJuyiAppearance,useJuyiReveal}.ts`、`directives/juyiCount.ts`、
+`i18n/locales/{zh,en}/juyi.ts`、`public/logo.svg`、
+`deploy/juyi/{update-from-ghcr.sh,smoke-compose.yml,seed-buy-menu.sql}`、
+`docs/聚蚁-sub2api-开发文档/`(知识库,需 .gitignore 开洞放行)
 
-修改:`tailwind.config.js`(变量化 primary/暖 dark/字体/阴影渐变)、`main.ts`(+2行)、`index.html`(favicon)、
+修改:`tailwind.config.js`(变量化 primary/暖 dark/字体/阴影渐变)、`main.ts`(+5行:juyi.css + v-jy-count)、
+`index.html`(favicon)、`.gitignore`(docs 白名单 + .finesse/)、
 `views/HomeView.vue`(壳)、`views/{user,admin}/DashboardView.vue`(各插1组件)、`i18n/*/index.ts`(+1行)、
 `components/layout/AppSidebar.vue`(ext:外链+外观菜单)、`components/layout/AuthLayout.vue`(动效背景)、
+`components/layout/AppHeader.vue`(R14 浮动头 1 class)、`components/layout/AppLayout.vue`(R14 主列 margin)、
 `components/common/VersionBadge.vue`(封更新)、`components/common/DataTable.vue`(暖化)、
 `components/common/GroupBadge.vue`、`components/account/AccountCapacityCell.vue`、
+`components/layout/__tests__/docUrlSanitization.spec.ts`(R14 改指 JuyiHome)、
 `.github/workflows/custom-build.yml`;另有 GroupsView/UsersView/图表等 sed 式颜色收编
 
 ## 本地开发
