@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 
-export type MonitorRange = '90m' | '24h' | '7d' | '30d'
+export type MonitorRange = '90m' | '24h' | '3d' | '7d' | '30d'
 export type HealthState = 'unknown' | 'healthy' | 'warning' | 'critical'
 /** Fine-grained score band for multi-stop green→yellow→red gradients (score0..score10). */
 export type HealthScoreBand =

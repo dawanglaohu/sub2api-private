@@ -240,9 +240,9 @@ def classify_frontend(path):
         "frontend/src/api/client.ts", "frontend/src/api/tokenRefresh.ts",
         "frontend/src/stores/", "frontend/src/router/", "frontend/src/utils/",
         "frontend/src/types/", "frontend/src/constants/", "frontend/src/composables/",
-        "frontend/src/i18n/", "frontend/src/assets/", "frontend/src/styles/",
-        "frontend/src/App.vue", "frontend/src/main.ts", "frontend/src/style.css",
-        "frontend/src/vite-env.d.ts", "frontend/index.html",
+        "frontend/src/directives/", "frontend/src/i18n/", "frontend/src/assets/",
+        "frontend/src/styles/", "frontend/src/App.vue", "frontend/src/main.ts",
+        "frontend/src/style.css", "frontend/src/vite-env.d.ts", "frontend/index.html",
     )
     if path.startswith(shell_prefixes):
         return "M10"
@@ -314,7 +314,9 @@ def matrix_counts(vault):
 
 def tracked_files(root):
     result = subprocess.run(
-        ["git", "-C", str(root), "ls-files"],
+        # core.quotepath=false: keep non-ASCII paths as raw UTF-8 instead of
+        # quoted octal escapes, so the vault-dir prefix match below works.
+        ["git", "-C", str(root), "-c", "core.quotepath=false", "ls-files"],
         check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

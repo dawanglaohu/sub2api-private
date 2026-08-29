@@ -13,36 +13,51 @@ function read(rel: string) {
 }
 
 describe('channel-monitor-v2 design system structure', () => {
-  it('user ChannelStatus V2 shell uses page-header, card, btn, tabs utilities', () => {
+  it('user ChannelStatus V2 passive monitor: no filter toolbar, per-model status cards', () => {
     // Route wrapper may switch V1/V2; design chrome lives on the V2 implementation.
+    // V2 was redesigned into a passive monitor: fixed 24h window, no filter
+    // toolbar, one status card per model grouped by platform.
     const src = read('views/user/ChannelStatusV2View.vue')
-    expect(src).toContain('page-header')
     expect(src).toContain('page-title')
-    expect(src).toContain('class="card')
     expect(src).toContain('btn btn-secondary')
-    expect(src).toContain('class="tab')
-    expect(src).toContain('tab-active')
     expect(src).toContain('badge badge-warning')
-    // Compact single-row toolbar
-    expect(src).toContain('monitor-toolbar')
-    expect(src).toContain('clearFilters')
-    expect(src).toContain('healthModeOptions')
-    expect(src).toContain("'cache'")
-    // Ops elevation: rounded-3xl + ring surfaces
     expect(src).toContain('rounded-3xl')
-    expect(src).toContain('ring-1 ring-gray-900/5')
-    // Overview-first KPI strip before primary viz
-    expect(src.indexOf('summaryAria')).toBeLessThan(src.indexOf('MonitorTrendChart'))
-    // No page-level fixed min-width that forces viewport horizontal scroll
+    // Display windows: 24h / 3d / 7d via the time-range selector, badge follows
+    expect(src).toContain("'24h', '3d', '7d'")
+    expect(src).toContain('rangeOptions')
+    expect(src).toContain('RANGE_LABEL_KEYS[range]')
+    // 2 cards per row: fine 5-min blocks need the wider card
+    expect(src).toContain('md:grid-cols-2')
+    expect(src).not.toContain('2xl:grid-cols-3')
+    expect(src).not.toContain('monitor-toolbar')
+    expect(src).not.toContain('FilterMultiSelect')
+    expect(src).not.toContain('clearFilters')
+    expect(src).not.toContain('MonitorTrendChart')
+    // Per-model diagnostic cards + lifecycle gates
+    expect(src).toContain('ModelStatusCard')
+    expect(src).toContain('status.emptyTitle')
+    expect(src).toContain('visibilitychange')
+  })
+
+  it('ModelStatusCard renders a card-contained dynamic strip with metric chips', () => {
+    const src = read('features/channel-monitor-v2/ModelStatusCard.vue')
+    expect(src).toContain('status-strip')
+    // Full window downsampled into uniform display blocks (288 × 5min → 60),
+    // fitted to card width; no scrolling
+    expect(src).toContain('downsampleMonitorSlots')
+    expect(src).toContain('displaySlots')
+    expect(src).toContain('minmax(0, 1fr)')
+    expect(src).not.toContain('overflow-x-auto')
+    expect(src).not.toContain('visibleSlots')
+    // Content-sized hover panel anchored near the block
+    expect(src).toContain('w-max')
+    expect(src).toContain('panelStyle')
+    // One boxed, centered tile per metric
+    expect(src).toContain('metric-chip')
+    expect(src).toContain('overflow-hidden')
+    expect(src).toContain('min-w-0')
     expect(src).not.toMatch(/min-width:\s*980px/)
-    expect(src).not.toMatch(/min-w-\[980px\]/)
-    // Dense tables scroll internally
-    expect(src).toMatch(/max-h-\[min\(52vh/)
-    expect(src).toContain('overflow-auto')
-    // Trend view toggle (pulse matrix / line chart) + default platform/group dimension
-    expect(src).toContain("trendView")
-    expect(src).toContain("'platform_group'")
-    expect(src).toContain('MonitorTrendChart')
+    expect(src).not.toContain('modal-overlay')
   })
 
   it('RelayPulseMatrix uses card chrome, matrix scroll, and hover tooltips (no click modal)', () => {

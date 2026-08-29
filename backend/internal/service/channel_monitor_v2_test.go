@@ -127,6 +127,20 @@ func TestChannelMonitorV2ParseFilterDefaultsAndBuckets(t *testing.T) {
 	require.Equal(t, []int64{1, 2}, filter.GroupIDs)
 	require.Equal(t, 90*time.Minute, filter.End.Sub(filter.Start))
 
+	filter, err = svc.ParseFilter("24h", nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Minute, filter.Bucket)
+	require.Equal(t, 24*time.Hour, filter.End.Sub(filter.Start))
+
+	filter, err = svc.ParseFilter("3d", nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 15*time.Minute, filter.Bucket)
+	require.Equal(t, 3*24*time.Hour, filter.End.Sub(filter.Start))
+
+	filter, err = svc.ParseFilter("7d", nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, time.Hour, filter.Bucket)
+
 	filter, err = svc.ParseFilter("30d", nil, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 24*time.Hour, filter.Bucket)

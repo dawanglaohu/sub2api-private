@@ -430,9 +430,19 @@ func (s *ChannelMonitorV2Service) ParseFilter(rangeValue string, platforms, mode
 	case "", "90m":
 		rangeValue, window, bucket = "90m", 90*time.Minute, 5*time.Minute
 	case "24h":
-		window, bucket = 24*time.Hour, time.Hour
+		// 5-minute blocks (288 cells) drive the V2 card strip — a dense uniform
+		// heat ribbon at 2-cards-per-row. 300s hits the fixed 5m rollup table,
+		// so the query stays cheap; the trailing partial block still refreshes
+		// with every aggregation run (60s/300s cadence).
+		window, bucket = 24*time.Hour, 5*time.Minute
+	case "3d":
+		// 15-minute blocks (288 cells): same strip density as the 24h view.
+		// Not a fixed-rollup tier → binned from 1m facts (retained 7d).
+		window, bucket = 3*24*time.Hour, 15*time.Minute
 	case "7d":
-		window, bucket = 7*24*time.Hour, 12*time.Hour
+		// Hourly blocks (168 cells) ride the fixed 1h rollup (retained 30d) —
+		// cheap over a week; 15-min over 7d would scan the 1m-facts edge.
+		window, bucket = 7*24*time.Hour, time.Hour
 	case "30d":
 		window, bucket = 30*24*time.Hour, 24*time.Hour
 	default:
