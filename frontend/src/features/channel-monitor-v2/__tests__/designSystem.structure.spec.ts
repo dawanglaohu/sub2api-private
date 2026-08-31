@@ -49,9 +49,12 @@ describe('channel-monitor-v2 design system structure', () => {
     expect(src).toContain('minmax(0, 1fr)')
     expect(src).not.toContain('overflow-x-auto')
     expect(src).not.toContain('visibleSlots')
-    // Content-sized hover panel anchored near the block
+    // Content-sized hover panel anchored near the block, teleported out of the
+    // clipping card so edge blocks still show the full detail.
     expect(src).toContain('w-max')
     expect(src).toContain('panelStyle')
+    expect(src).toContain('<Teleport to="body">')
+    expect(src).toContain('getBoundingClientRect')
     // One boxed, centered tile per metric
     expect(src).toContain('metric-chip')
     expect(src).toContain('overflow-hidden')

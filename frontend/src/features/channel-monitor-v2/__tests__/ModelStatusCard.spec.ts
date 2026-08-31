@@ -151,11 +151,15 @@ describe('ModelStatusCard', () => {
         buckets: [bucketAt('2026-08-01T23:00:00Z', 95, 'healthy')],
       }),
     })
+    // Panel is teleported to <body> so the card's overflow-hidden cannot clip it.
+    const tooltipEl = () => document.body.querySelector('[role="tooltip"]')
     expect(wrapper.find('[role="tooltip"]').exists()).toBe(false)
+    expect(tooltipEl()).toBeNull()
     await wrapper.findAll('.strip-cell')[57].trigger('mouseenter')
-    const tooltip = wrapper.find('[role="tooltip"]')
-    expect(tooltip.exists()).toBe(true)
-    const text = tooltip.text()
+    const tooltip = tooltipEl()
+    expect(tooltip).not.toBeNull()
+    expect(tooltip!.className).toContain('fixed')
+    const text = tooltip!.textContent || ''
     expect(text).toContain('成功率')
     expect(text).toContain('错误率')
     expect(text).toContain('首 Token')
@@ -167,7 +171,7 @@ describe('ModelStatusCard', () => {
     expect(text).not.toContain('Token 数')
     // Leaving the strip hides the detail again.
     await wrapper.find('.status-strip').trigger('mouseleave')
-    expect(wrapper.find('[role="tooltip"]').exists()).toBe(false)
+    expect(tooltipEl()).toBeNull()
   })
 
   it('labels model state, counts attention buckets and honors throughput privacy', () => {

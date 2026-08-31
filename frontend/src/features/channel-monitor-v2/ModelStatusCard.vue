@@ -67,7 +67,6 @@
          no scrolling, full coverage. -->
     <div class="relative mt-1.5">
       <div
-        ref="stripRef"
         class="status-strip grid w-full min-w-0 select-none"
         :style="{ gridTemplateColumns: `repeat(${displaySlots.length}, minmax(0, 1fr))` }"
         role="img"
@@ -88,12 +87,16 @@
         ></div>
       </div>
 
-      <div
-        v-if="activeBucket"
-        class="bucket-detail pointer-events-none absolute bottom-full z-20 mb-2 w-max max-w-[min(20rem,calc(100%-1rem))] rounded-xl border border-gray-200 bg-white/95 p-2.5 shadow-lg backdrop-blur-sm dark:border-dark-600 dark:bg-dark-900/95"
-        :style="panelStyle"
-        role="tooltip"
-      >
+      <!-- Detail panel lives on <body>: the card clips its own content
+           (overflow-hidden), so an in-card panel gets cut off at the edges. -->
+      <Teleport to="body">
+        <div
+          v-if="activeBucket"
+          ref="panelRef"
+          class="bucket-detail pointer-events-none fixed z-[70] w-max max-w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white/95 p-2.5 shadow-lg backdrop-blur-sm dark:border-dark-600 dark:bg-dark-900/95"
+          :style="panelStyle"
+          role="tooltip"
+        >
           <div class="flex items-center justify-between gap-2 text-[11px] font-semibold text-gray-900 dark:text-white">
             <span class="truncate tabular-nums">{{ activeBucketRange }}</span>
             <span class="shrink-0" :class="STATE_TEXT[activeBucketState]">{{ t(STATE_LABEL_KEYS[activeBucketState]) }}</span>
@@ -112,7 +115,8 @@
               {{ t('channelMonitorV2.metrics.rpmValue', { value: activeRpm }) }}
             </li>
           </ul>
-      </div>
+        </div>
+      </Teleport>
     </div>
 
     <p class="mt-2 text-[10px] leading-none text-gray-300 dark:text-gray-600">
@@ -122,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GroupPlatform } from '@/types'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
@@ -245,27 +249,73 @@ const metricItems = computed(() => {
 })
 
 const activeIndex = ref<number | null>(null)
-const stripRef = ref<HTMLElement | null>(null)
-const panelLeft = ref<number | null>(null)
+const panelRef = ref<HTMLElement | null>(null)
+/** Hovered block geometry in viewport coordinates (the panel is fixed-positioned). */
+const anchor = ref<{ x: number; top: number; bottom: number } | null>(null)
+const panelSize = ref({ width: 0, height: 0 })
+const placement = ref<'top' | 'bottom'>('top')
+const VIEWPORT_MARGIN = 8
+const ANCHOR_GAP = 8
+/** Keep clear of the floating app header (sticky, top-10 h-16) instead of covering it. */
+const TOP_SAFE_AREA = 84
 
-/** Content-sized panel anchored near the hovered block, clamped into the card. */
+/** Content-sized panel anchored near the hovered block, clamped into the viewport. */
 function activate(index: number, event?: Event) {
   activeIndex.value = index
   const cell = event?.currentTarget as HTMLElement | null | undefined
-  const strip = stripRef.value
-  if (!cell || !strip) {
-    panelLeft.value = null
+  if (!cell || typeof cell.getBoundingClientRect !== 'function') {
+    anchor.value = null
     return
   }
-  const center = cell.offsetLeft + cell.offsetWidth / 2
-  const half = 110
-  panelLeft.value = Math.max(half, Math.min(center, strip.clientWidth - half))
+  const rect = cell.getBoundingClientRect()
+  anchor.value = { x: rect.left + rect.width / 2, top: rect.top, bottom: rect.bottom }
+  placement.value = 'top'
+  void nextTick(measurePanel)
 }
-const panelStyle = computed(() =>
-  panelLeft.value == null
-    ? { left: '50%', transform: 'translateX(-50%)' }
-    : { left: `${panelLeft.value}px`, transform: 'translateX(-50%)' },
-)
+
+/** Measure once rendered, then flip below the strip when the card sits near the top. */
+function measurePanel() {
+  const el = panelRef.value
+  if (!el) return
+  panelSize.value = { width: el.offsetWidth, height: el.offsetHeight }
+  const spot = anchor.value
+  if (!spot) return
+  const viewportHeight = window.innerHeight || 0
+  const fitsAbove = spot.top - panelSize.value.height - ANCHOR_GAP >= TOP_SAFE_AREA
+  const fitsBelow = spot.bottom + panelSize.value.height + ANCHOR_GAP <= viewportHeight - VIEWPORT_MARGIN
+  placement.value = !fitsAbove && fitsBelow ? 'bottom' : 'top'
+}
+
+const panelStyle = computed(() => {
+  const spot = anchor.value
+  if (!spot) {
+    return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+  }
+  const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth || 0
+  const half = panelSize.value.width / 2
+  let x = spot.x
+  if (half > 0 && viewportWidth > 0) {
+    const min = half + VIEWPORT_MARGIN
+    const max = viewportWidth - half - VIEWPORT_MARGIN
+    x = max < min ? viewportWidth / 2 : Math.min(Math.max(spot.x, min), max)
+  }
+  const top = placement.value === 'top' ? spot.top - ANCHOR_GAP : spot.bottom + ANCHOR_GAP
+  return {
+    left: `${x}px`,
+    top: `${top}px`,
+    transform: placement.value === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+  }
+})
+
+/** Fixed positioning is viewport-anchored: scrolling or resizing detaches it. */
+function dismiss() {
+  activeIndex.value = null
+}
+onBeforeUnmount(() => {
+  if (typeof window === 'undefined') return
+  window.removeEventListener('scroll', dismiss, true)
+  window.removeEventListener('resize', dismiss)
+})
 
 const activeSlot = computed(() =>
   activeIndex.value == null ? undefined : displaySlots.value[activeIndex.value],
@@ -294,6 +344,17 @@ const activeTps = computed(() =>
 const activeRpm = computed(() =>
   activeBucket.value ? formatMonitorThroughput(activeBucket.value.metrics.rpm) : '-',
 )
+
+watch(activeBucket, (bucket) => {
+  if (typeof window === 'undefined') return
+  if (bucket) {
+    window.addEventListener('scroll', dismiss, true)
+    window.addEventListener('resize', dismiss)
+  } else {
+    window.removeEventListener('scroll', dismiss, true)
+    window.removeEventListener('resize', dismiss)
+  }
+})
 
 function formatClock(value: string) {
   return new Intl.DateTimeFormat(locale.value || undefined, {
