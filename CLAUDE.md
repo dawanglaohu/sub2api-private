@@ -12,13 +12,13 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
 
-## 当前状态(2026-08-30)
+## 当前状态(2026-08-31)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-84b8240d`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-2dba8964`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-8ef64720`(v0.1.183 + R14 UI,见 `/opt/sub2api-tool/previous-image`)
+- 回滚位:`custom-84b8240d`(v0.1.183 + R15 监控页,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -272,6 +272,23 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 - 落地:CI run 84b8240d 绿灯 → 镜像 `custom-84b8240d` → pull → `strings` 验版本 0.1.183 →
   smoke → 备份 → switch → smoke-down;回滚位落到 `custom-8ef64720`。
   验证:前端 49 个监控单测 + `pnpm run build` 全过;本地无 Go,后端靠 CI 的 docker build 兜编译
+
+**R16(2026-08-31)监控页明细窗修复(纯二开发布)**
+- 症状:模型卡色带上悬停/点击首尾色块,区间明细窗只露出一半——卡片 `article` 的 `overflow-hidden`
+  (色带必须被卡片裁住)把绝对定位的明细窗一并裁掉了,旧代码还把窗**夹进色带宽度**(half=110)、
+  等于主动摁回卡片内
+- 改法:明细窗 `<Teleport to="body">` + `position: fixed` 物理脱离卡片;锚点改 `getBoundingClientRect`
+  取视口坐标;nextTick 量出窗尺寸后水平夹进视口(左右各 8px),上方放不下则翻到色带下方,
+  并预留 **84px 让开浮动 header**(header z=30 < 窗 z-70,不让开就会盖住它);
+  fixed 是视口锚定,窗打开期间监听 `scroll`(capture)/`resize` 直接关闭,避免滚动脱锚
+- **副作用会咬测试**:窗不在组件根内了,`wrapper.find('[role=tooltip]')` 永远为空——
+  单测改从 `document.body.querySelector` 查;`designSystem.structure.spec.ts` 加了
+  「必须 Teleport 出卡片」断言防回退
+- 验证:本地 dev + `mock-monitor-server.mjs` 用 Playwright 实测三种位置(最左溢出卡片、
+  最右夹在视口内、贴顶自动下翻);49 个监控单测 + `pnpm run build` 过
+- 落地:push 触发 CI run 33349486524 绿灯(7m16s)→ 镜像 `custom-2dba8964` → pull(digest 与 CI 一致)→
+  `strings` 验版本 0.1.183 **且 grep 到 `bucket-detail pointer-events-none fixed`**(确认新前端真进了镜像)→
+  smoke → 备份 320M(sub2api-20260831-021738.sql.gz)→ switch → smoke-down;回滚位落到 `custom-84b8240d`
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
