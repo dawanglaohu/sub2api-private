@@ -10,15 +10,15 @@
 - 私有仓库:https://github.com/dawanglaohu/sub2api-private (GitHub 账号 dawanglaohu,GCM 已存凭据)
 - 本地 remote:`upstream` = 上游(只读勿推);`private` = 私有仓库
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
-- 上游 v* tags 已同步进私有仓库(CI 合并新 tag 时会一并推)
+- 上游 v* tags 需手工同步进私有仓库(**CI 自动合并不推 tag**,R17 实证;每次本地合并时补推,先 tag 后分支)
 
-## 当前状态(2026-08-31)
+## 当前状态(2026-09-14)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-2dba8964`,自报版本 0.1.183**(= 上游 v0.1.183 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-8c712f25`,自报版本 0.2.4**(= 上游 v0.2.4 + 全部二开,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-84b8240d`(v0.1.183 + R15 监控页,见 `/opt/sub2api-tool/previous-image`)
+- 回滚位:`custom-2dba8964`(v0.1.183 + R16 明细窗,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -289,6 +289,29 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 - 落地:push 触发 CI run 33349486524 绿灯(7m16s)→ 镜像 `custom-2dba8964` → pull(digest 与 CI 一致)→
   `strings` 验版本 0.1.183 **且 grep 到 `bucket-detail pointer-events-none fixed`**(确认新前端真进了镜像)→
   smoke → 备份 320M(sub2api-20260831-021738.sql.gz)→ switch → smoke-down;回滚位落到 `custom-84b8240d`
+
+**R17(2026-09-14)升级到 v0.2.4(首次跨大版本 0.1→0.2,监控页 V2 合并策略首战)**
+- 现场:CI 自 9/9 起连续 5 天红灯(卡在 `Sync`),生产停在 0.1.183。期间 CI **已自动无冲突合入**
+  v0.1.185/v0.2.0/v0.2.1/v0.2.3 四个 tag(私有 `custom` 领先本地 4 个 merge 提交,先 `--ff-only` 对齐),
+  卡住的是 v0.2.4。**接手时先验 CI 自动合的那几版有没有静默动到监控 V2**:
+  `git diff v0.2.3 custom --name-only | grep -v docs` = 70 与 R15 清单逐字一致,后端 `ParseFilter` 24h/3d/7d 桶映射完好
+- v0.2.4 冲突 2 文件,均取 ours:① GroupBadge.vue(上游新增 MiniMax 平台配色,同 R10/R13 套路);
+  ② **ChannelStatusV2View.vue(合并策略首次实战)**:上游 #6759 加了「隐藏用户排名」开关
+  (`isChannelMonitorUserRankingHidden`,tab 裁剪 + 跳过 `/users`)与「TTFT 缺样本显示中性」(`ttftDisplayState`)。
+  按策略 `git diff v0.2.3 v0.2.4 -- <file>` 逐段核对:我们的重写版**没有用户排名 tab、不调 `/users`、
+  不用上游 MetricCell 的 ttft state**,两处改动对我们零作用面 → 整文件取 ours,无需手工移植。
+  后端 `channel_monitor_v2.go` 上游只加了 `hideUserRankingForViewer`,与我们的 case 分支不相邻,自动合并干净
+- 私有仓库 tag 落后 7 个(v0.1.184~v0.2.4;**CI 自动合并并不推 tag**),一次补推;
+  推送顺序铁律照旧(tag 先→分支后),CI 日志 `build=true version=0.2.4 sha8=8c712f25` ✅
+- 本机现在有 `gh` CLI 2.98(已登录 dawanglaohu),排查 CI 直接 `gh run list/view --log-failed`,
+  不必再绕服务器 PAT。查 GHCR 版本列表用 `gh api user/packages/...`(**不带前导斜杠**,Git Bash 会把
+  `/user/...` 改写成文件路径)
+- 落地:push 触发 CI run 34794345028 绿灯(~8min)→ 镜像 `custom-8c712f25` → pull → `strings` 验版本 0.2.4
+  且 grep 二进制内 6 处二开标记(juyi-float-header/bucket-detail…fixed/JuyiAntSentry/jy-count)→ smoke →
+  备份 318M(sub2api-20260914-010836.sql.gz)→ switch → smoke-down;回滚位落到 `custom-2dba8964`。
+  验收:8181 HTTP 200 + title「聚蚁」、logo.svg 200、5 分钟日志零 error/migrat 报错,真实用户 `/auth/me` 200,
+  本机 `curl --resolve` 走公网 443 同样 200
+- 前端验证口径更新:`pnpm vitest run src/features/channel-monitor-v2` 现在是 **57 个**(上游加了 MetricCell/monitorFormat 用例)
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
