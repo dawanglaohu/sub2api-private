@@ -12,13 +12,13 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 需手工同步进私有仓库(**CI 自动合并不推 tag**,R17 实证;每次本地合并时补推,先 tag 后分支)
 
-## 当前状态(2026-09-14)
+## 当前状态(2026-09-17)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-8c712f25`,自报版本 0.2.4**(= 上游 v0.2.4 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-31f3387b`,自报版本 0.2.5**(= 上游 v0.2.5 + 全部二开,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-2dba8964`(v0.1.183 + R16 明细窗,见 `/opt/sub2api-tool/previous-image`)
+- 回滚位:`custom-8c712f25`(v0.2.4 + 全部二开,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -312,6 +312,31 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
   验收:8181 HTTP 200 + title「聚蚁」、logo.svg 200、5 分钟日志零 error/migrat 报错,真实用户 `/auth/me` 200,
   本机 `curl --resolve` 走公网 443 同样 200
 - 前端验证口径更新:`pnpm vitest run src/features/channel-monitor-v2` 现在是 **57 个**(上游加了 MetricCell/monitorFormat 用例)
+
+**R18(2026-09-17)升级到 v0.2.5(CI 全自动无冲突,纯运维)+ 排查「未能更新任何能力元数据」警告**
+- 现场:9/16 每日 CI 已自动无冲突合入 v0.2.5(私有 `custom` 领先本地 1 个 merge 提交,`--ff-only` 对齐)。
+  硬校验 `git diff v0.2.5 custom --name-only | grep -v docs` = 70,与 R17 清单 comm 逐字一致;
+  `git log v0.2.4..v0.2.5 -- <监控 V2 七个文件>` 为空,上游本区间没碰监控页,桶映射/`'3d'` 完好
+- 私有仓库缺 v0.2.5 tag(CI 自动合并不推 tag,同 R17),补推;tag push 不触发构建,镜像已是 CI 合并后的 sha
+- **`gh run list` 要带 `-R dawanglaohu/sub2api-private`**——本地 remote 没有 `origin`,gh 会默认解析到
+  `upstream`(Wei-Shaw/sub2api)报 404 workflow not found。`gh api user/packages/...` 当前 token 缺 read:packages
+  scope 报 403,镜像标签改从 `gh run view <id> --log | grep image.name` 拿(`ghcr.io/...:custom-31f3387b`)
+- 落地:镜像 `custom-31f3387b`(digest 485df794 与 CI 一致)→ `strings` 验版本 0.2.5 且 6 处二开标记齐全
+  (juyi-float-header/bucket-detail…fixed/JuyiAntSentry/jy-count/JuyiSwarmField/ModelStatusCard)→ smoke →
+  备份 314M(sub2api-20260917-080101.sql.gz)→ switch → smoke-down;回滚位落到 `custom-8c712f25`。
+  验收:8181 HTTP 200 + title「聚蚁」、logo.svg 200、/health ok、启动后日志零 error/migrat 报错
+- **「模型 ID 已同步,但未能更新任何能力元数据」根因(上游设计限制,非故障)**:
+  `SyncUpstreamModelCatalog`(`backend/internal/service/upstream_models.go`)先读上游 `/models` 响应里的
+  能力字段(reasoning/context_window/input_modalities…),不全就去 models.dev 注册表按账号 base_url 匹配
+  provider 补齐;每个模型都补不齐 → 返回 `upstream_model_metadata_incomplete` → 前端弹这条警告。
+  实测:① 我们的中转站(api.zzshu.cc / st.walkcoding.top)`/models` 只回 id/display_name/type/created,零能力字段;
+  ② models.dev 里 anthropic/xai/openai 三个 provider **没有 `api` 字段**,按 URL 前缀永远匹配不上,
+  已知 host 兜底只认 api.openai.com/chatgpt.com/opencode.ai——我们全部账号(中转站、kiro-rs 内网、
+  cli-chat-proxy.grok.com)一个都不在名单,连官方 api.anthropic.com 也匹配不上。
+  **影响面:模型 ID 白名单照常同步成功;能力元数据只服务 Codex 类客户端的模型目录展示**
+  (reasoning 档位/模态/上下文窗口),Anthropic 中转账号无感。DB 里 `accounts.extra` 无一条
+  `upstream_model_metadata`,验证了从未成功写入。要消警告只能改上游匹配逻辑(加已知 host 或
+  按 platform 直接映射 provider),属上游功能范围,本轮不动
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
