@@ -12,13 +12,13 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 需手工同步进私有仓库(**CI 自动合并不推 tag**,R17 实证;每次本地合并时补推,先 tag 后分支)
 
-## 当前状态(2026-09-17)
+## 当前状态(2026-09-25)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-31f3387b`,自报版本 0.2.5**(= 上游 v0.2.5 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-7e3c68da`,自报版本 0.2.8**(= 上游 v0.2.8 + 全部二开,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-8c712f25`(v0.2.4 + 全部二开,见 `/opt/sub2api-tool/previous-image`)
+- 回滚位:`custom-31f3387b`(v0.2.5 + 全部二开,见 `/opt/sub2api-tool/previous-image`)
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -337,6 +337,14 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
   (reasoning 档位/模态/上下文窗口),Anthropic 中转账号无感。DB 里 `accounts.extra` 无一条
   `upstream_model_metadata`,验证了从未成功写入。要消警告只能改上游匹配逻辑(加已知 host 或
   按 platform 直接映射 provider),属上游功能范围,本轮不动
+
+**R19(2026-09-25)升级到 v0.2.8(本地合并无冲突,纯运维)**
+- 9/18 后每日 CI 未再合入新版(v0.2.7/v0.2.8 未被自动合),本地直接 `git merge v0.2.8`,零冲突
+- 硬校验:`git diff v0.2.8 HEAD` 非 docs 清单 70,与 v0.2.5 基线 comm 逐字一致;上游 v0.2.5..v0.2.8 未碰监控 V2 七个文件;
+  `'3d'`、`case "3d"`、ext: 均在。`pnpm run build` 过,监控单测现为 **51 个**全过
+- 补推 tag v0.2.7/v0.2.8(先 tag 后分支)→ CI run 36085048116 绿灯 → 镜像 `custom-7e3c68da`(version=0.2.8)→
+  pull → strings 验 0.2.8 + 6 处二开标记 → smoke → 备份 306M(sub2api-20260925-021722.sql.gz)→ switch → smoke-down;
+  回滚位 `custom-31f3387b`。验收:8181 200 + title「聚蚁」、logo.svg 200、日志零 error
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
