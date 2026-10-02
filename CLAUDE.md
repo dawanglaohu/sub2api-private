@@ -12,14 +12,14 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 需手工同步进私有仓库(**CI 自动合并不推 tag**,R17 实证;每次本地合并时补推,先 tag 后分支)
 
-## 当前状态(2026-09-25)
+## 当前状态(2026-10-02)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-7e3c68da`,自报版本 0.2.8**(= 上游 v0.2.8 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-85b1833d`,自报版本 0.2.13**(= 上游 v0.2.13 + 全部二开,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-31f3387b`(v0.2.5 + 全部二开,见 `/opt/sub2api-tool/previous-image`)
-- DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(保留 14 天)
+- 回滚位:`custom-7e3c68da`(v0.2.8 + 全部二开,见 `/opt/sub2api-tool/previous-image`)
+- DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(服务器实际保留 24 小时)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
 
@@ -345,6 +345,15 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 - 补推 tag v0.2.7/v0.2.8(先 tag 后分支)→ CI run 36085048116 绿灯 → 镜像 `custom-7e3c68da`(version=0.2.8)→
   pull → strings 验 0.2.8 + 6 处二开标记 → smoke → 备份 306M(sub2api-20260925-021722.sql.gz)→ switch → smoke-down;
   回滚位 `custom-31f3387b`。验收:8181 200 + title「聚蚁」、logo.svg 200、日志零 error
+
+**R20(2026-10-02)升级到 v0.2.13 并保留全部二开**
+- 基线：生产 `custom-7e3c68da`/v0.2.8，GitHub 已自动合到 v0.2.12；隔离工作树无冲突合入精确 v0.2.13（peeled `3040209f`），合并提交 `85b1833d`。
+- 二开净差异与旧生产逐字一致，共 70 个非 docs 文件；68 个运行/部署文件中 64 个 blob 相同，setting handler 与 admin Dashboard/Groups/Settings 四交集的二开增删逐行一致。监控 V2、ext、主题字体、蜂窝蚁群/哨兵、双 Dashboard、禁官方自更新完整保留。
+- 前端 frozen-lockfile、生产构建（1084 modules）和 214 tests 通过；package/lock 与 v0.2.13 完全相同。先推 v0.2.9—v0.2.13 tags 后推 custom，GitHub run `37023814328` 成功。
+- `v0.2.13-custom` 与 `custom-85b1833d` 的 manifest、服务器拉取摘要均为 `sha256:f77f7810918340ea461a490f47fa3c92163ecded19faa3002b4a684d1f966136`。
+- SSH MCP 执行 pull → 隔离 smoke → 完整 DB 备份校验 → switch。备份 `/root/sub2api-backups/sub2api-20261002-151029.sql.gz`，310223671 bytes，gzip 与 dump 完成标记正常；详细校验和见 M13-T2。
+- 生产于北京时间 23:14 切换完成，回滚位为 `custom-7e3c68da`；两份 241 迁移都已记录，四个核心容器 healthy，应用重启计数 0，启动日志无 panic/fatal/迁移或数据库失败。
+- 公网 `/health` 与公开版本 0.2.13 正常，站名、Logo、品牌句、兑换码外链、home_content 与更新前一致。隔离监控接口的 24h/3d/7d 返回 300/900/3600 秒桶；临时管理员声明确认门保持 423，未代为接受声明，ext 写入不记为运行验证通过。生产首页/登录页浏览器无警告或错误，聚蚁视觉完整；隔离烟测栈已清理。
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
