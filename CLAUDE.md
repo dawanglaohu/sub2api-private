@@ -12,13 +12,13 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 需手工同步进私有仓库(**CI 自动合并不推 tag**,R17 实证;每次本地合并时补推,先 tag 后分支)
 
-## 当前状态(2026-10-14)
+## 当前状态(2026-10-18)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-db941888`,自报版本 0.2.16**(= 上游 v0.2.16 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-3d45e8ce`,自报版本 0.2.17**(= 上游 v0.2.17 + 全部二开,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-85b1833d`(v0.2.13 + 全部二开,见 `/opt/sub2api-tool/previous-image`)
+- 回滚位:`custom-db941888`(v0.2.16 + 全部二开,见 `/opt/sub2api-tool/previous-image`);执行前须按 M13-T2 核对 pending 退款扣减状态
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(服务器实际保留 24 小时)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -363,6 +363,16 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 - 备份 `/root/sub2api-backups/sub2api-20261015-005526.sql.gz` 为 298743341 bytes，gzip/导出完成标记/SHA-256 通过，详见 M13-T2。文件时间为 UTC。
 - 生产于 2026-10-14 18:01（America/Los_Angeles；UTC 2026-10-15 01:01）切换，回滚镜像 `custom-85b1833d`。四容器 healthy、重启计数 0，五迁移齐全，当前 Gemini 活跃缓存/待恢复操作均为 0；今后回滚前仍需核对新缓存与平台状态。
 - 公网 v0.2.16/health 正常，六项公开品牌/菜单/监控模式设置逐项未变，Logo 内容与源码一致。首页/登录页真实浏览器验证聚蚁、蚁群、蜂窝、双哨兵正常且无控制台警告/错误；启动日志 45 行未发现严重错误。隔离烟测容器、匿名卷与网络已清理。
+
+**R22(2026-10-18)升级到 v0.2.17，二开净差异逐行保留**
+- 精确上游 peeled `060d0160417782cd962a0c7f460f6cd4565d4916` 无冲突合入 custom，合并提交 `3d45e8ceeadd15ec17bf4163377d92a4920b1907`；先推 tag 再推分支，GitHub run `39208309494` 成功。
+- 新旧非 docs 二开清单均 73 个，上游交集为 0，backend/frontend/deploy/workflow 完整净补丁 9354 行逐行一致。前端依赖与上游一致，迁移目录无变化；二开监控、品牌、主题、哨兵、双仪表盘、ext 与禁自更新均保留。
+- frozen-lockfile、类型检查、1090 模块生产构建及 28 文件共 307 用例通过；上游 release 的后端 test/frontend/golangci-lint 通过。本地未跑 Go 全套测试。
+- 不可变镜像 `custom-3d45e8ce` 与 `v0.2.17-custom` manifest 相同，拉取摘要为 `sha256:b83f5af97882d9864d3cc92f752fe31d81c5f93868c338909bc4a826710a2877`，与 CI 一致。
+- 隔离烟测健康、版本、品牌、登录及监控 24h/3d/7d 的 300/900/3600 秒桶通过；无样本 unknown，非法范围 400。临时管理员声明门保持 423，未代为接受。
+- 切换前备份 `/root/sub2api-backups/sub2api-20261019-061715.sql.gz`，298310264 bytes，gzip/导出完成标记/校验和通过，详细 SHA-256 见 M13-T2；文件时间为 UTC。
+- 生产于 2026-10-18 23:19（America/Los_Angeles；UTC 2026-10-19 06:19）切换为 v0.2.17；回滚镜像 `custom-db941888`。四容器 healthy/restart0，公网健康/版本正确，六项公开品牌、外链与监控设置逐项不变，Logo 内容与源码一致。首页/登录页浏览器无警告或错误，聚蚁、蚁群、蜂窝、双哨兵保留，43 行启动日志无严重错误匹配。
+- 现网 OpenAI 账号均为 API-key，gpt-5.5 映射亦属于此路径，不受订阅退役影响；近 7 日 gpt-5.5 用量为 0，本次未改模型映射。切换前后 pending/refunding/held 均为 0。新版 pending 退款保留扣减并写 deductionHeld，旧版不识别，后续回滚须先由新版收敛在途退款，不能因无迁移就直接回滚。隔离烟测容器、匿名卷和网络均已清理。
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
