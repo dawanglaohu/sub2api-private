@@ -575,45 +575,58 @@ func isClaude55SignedThinkingModel(model string) bool {
 
 // validateClaude55Request rejects settings that the upstream cannot honor.
 // Call before OAuth mimicry can remove tool_choice or alter thinking defaults.
-func validateClaude55Request(body []byte, model string) error {
+func validateClaude55Request(body []byte, model string) ([]byte, error) {
 	if !isClaude55SignedThinkingModel(model) {
-		return nil
+		return body, nil
 	}
 	isSonnet55 := claude.IsSonnet55(model)
 	isHaiku55 := claude.IsHaiku55(model)
+	// 老客户端仍发 thinking.type=enabled 加 budget_tokens。5.5 家族上游不接受
+	// enabled，在这里静默改成 adaptive 并丢掉 budget，而不是在尚未建上游请求时 400。
+	if gjson.GetBytes(body, "thinking.type").String() == "enabled" {
+		rewritten, err := sjson.SetBytes(body, "thinking.type", "adaptive")
+		if err != nil {
+			return body, err
+		}
+		rewritten, err = sjson.DeleteBytes(rewritten, "thinking.budget_tokens")
+		if err != nil {
+			return body, err
+		}
+		body = rewritten
+	}
 	thinkingType := gjson.GetBytes(body, "thinking.type").String()
 	switch thinkingType {
 	case "disabled", "enabled":
 		if isHaiku55 {
-			// haiku-5-5：enabled 一律 400（用 adaptive）；disabled 仅 high 及以下
-			// 可用，xhigh/max 上 400。见官方 migration guide。
+			// enabled 已在上面改成 adaptive。disabled 仅 high 及以下可用，
+			// xhigh/max 仍 400。见官方 migration guide。
 			if thinkingType == "enabled" {
-				return fmt.Errorf("claude-haiku-5-5 requires adaptive thinking; omit thinking or use thinking.type=adaptive and output_config.effort")
+				return body, fmt.Errorf("claude-haiku-5-5 requires adaptive thinking; omit thinking or use thinking.type=adaptive and output_config.effort")
 			}
 			switch gjson.GetBytes(body, "output_config.effort").String() {
 			case "xhigh", "max":
-				return fmt.Errorf("claude-haiku-5-5 thinking.type=disabled supports only low, medium or high effort")
+				return body, fmt.Errorf("claude-haiku-5-5 thinking.type=disabled supports only low, medium or high effort")
 			}
 			break
 		}
 		if isSonnet55 {
-			return fmt.Errorf("claude-sonnet-5-5 requires adaptive thinking or thinking.type=between_tools; omit thinking or use one of those modes")
+			return body, fmt.Errorf("claude-sonnet-5-5 requires adaptive thinking or thinking.type=between_tools; omit thinking or use one of those modes")
 		}
-		return fmt.Errorf("claude-opus-5-5 requires adaptive thinking; omit thinking or use thinking.type=adaptive and output_config.effort")
+		return body, fmt.Errorf("claude-opus-5-5 requires adaptive thinking; omit thinking or use thinking.type=adaptive and output_config.effort")
 	case "between_tools":
 		if !isSonnet55 {
 			if isHaiku55 {
-				return fmt.Errorf("claude-haiku-5-5 requires adaptive thinking; thinking.type=between_tools is unsupported (use thinking.type=disabled at high effort or below)")
+				return body, fmt.Errorf("claude-haiku-5-5 requires adaptive thinking; thinking.type=between_tools is unsupported (use thinking.type=disabled at high effort or below)")
 			}
-			return fmt.Errorf("claude-opus-5-5 requires adaptive thinking; thinking.type=between_tools is unsupported")
+			return body, fmt.Errorf("claude-opus-5-5 requires adaptive thinking; thinking.type=between_tools is unsupported")
 		}
 		effort := gjson.GetBytes(body, "output_config.effort").String()
 		if effort == "xhigh" || effort == "max" {
-			return fmt.Errorf("claude-sonnet-5-5 thinking.type=between_tools supports only low, medium or high effort")
+			return body, fmt.Errorf("claude-sonnet-5-5 thinking.type=between_tools supports only low, medium or high effort")
 		}
 		for _, field := range []string{"thinking.display", "thinking.budget_tokens", "thinking.block_binding"} {
 			if gjson.GetBytes(body, field).Exists() {
-				return fmt.Errorf("claude-sonnet-5-5 thinking.type=between_tools does not support %s", field)
+				return body, fmt.Errorf("claude-sonnet-5-5 thinking.type=between_tools does not support %s", field)
 			}
 		}
 	}
@@ -628,30 +641,30 @@ func validateClaude55Request(body []byte, model string) error {
 	// 与 opus/sonnet-5-5 不同，不拦截。见官方 migration guide。
 	if !isHaiku55 {
 		if gjson.GetBytes(body, "tool_choice").String() == "required" {
-			return fmt.Errorf("%s does not support forced tool_choice; use auto or none", modelName)
+			return body, fmt.Errorf("%s does not support forced tool_choice; use auto or none", modelName)
 		}
 		switch gjson.GetBytes(body, "tool_choice.type").String() {
 		case "any", "tool", "function", "custom", "namespace":
-			return fmt.Errorf("%s does not support forced tool_choice; use auto or none", modelName)
+			return body, fmt.Errorf("%s does not support forced tool_choice; use auto or none", modelName)
 		}
 	}
 	if isSonnet55 || isHaiku55 {
 		if temperature := gjson.GetBytes(body, "temperature"); temperature.Exists() && (temperature.Type != gjson.Number || temperature.Float() != 1) {
-			return fmt.Errorf("%s does not support non-default temperature", modelName)
+			return body, fmt.Errorf("%s does not support non-default temperature", modelName)
 		}
 		// Haiku 5.5 只接受显式 top_p=0.99；保留 Sonnet 5.5 既有的区间策略。
 		if topP := gjson.GetBytes(body, "top_p"); topP.Exists() && (topP.Type != gjson.Number ||
 			(isHaiku55 && topP.Float() != 0.99) || (isSonnet55 && (topP.Float() < 0.99 || topP.Float() > 1))) {
-			return fmt.Errorf("%s does not support non-default top_p", modelName)
+			return body, fmt.Errorf("%s does not support non-default top_p", modelName)
 		}
 		if gjson.GetBytes(body, "top_k").Exists() {
-			return fmt.Errorf("%s does not support top_k", modelName)
+			return body, fmt.Errorf("%s does not support top_k", modelName)
 		}
 		if isHaiku55 && gjson.GetBytes(body, "temperature").Exists() && gjson.GetBytes(body, "top_p").Exists() {
-			return fmt.Errorf("%s does not allow temperature and top_p together; omit both", modelName)
+			return body, fmt.Errorf("%s does not allow temperature and top_p together; omit both", modelName)
 		}
 	}
-	return nil
+	return body, nil
 }
 
 // FilterThinkingBlocks removes thinking blocks from request body

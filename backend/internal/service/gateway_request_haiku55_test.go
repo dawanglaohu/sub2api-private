@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 // issue #7919：claude-haiku-5-5 请求校验（官方 migration guide 口径）。
@@ -16,12 +17,13 @@ func TestValidateClaude55Request_Haiku55(t *testing.T) {
 	cases := []struct {
 		name string
 		// extra 为追加进最小合法请求的 JSON 片段（含前导逗号）
-		extra   string
-		wantErr string // 为空表示期望通过
+		extra        string
+		wantErr      string // 为空表示期望通过
+		wantAdaptive bool
 	}{
 		{name: "adaptive thinking passes", extra: `,"thinking":{"type":"adaptive"},"output_config":{"effort":"medium"}`},
 		{name: "omitted thinking passes", extra: ``},
-		{name: "enabled thinking rejected", extra: `,"thinking":{"type":"enabled","budget_tokens":8000}`, wantErr: "requires adaptive thinking"},
+		{name: "enabled thinking rewritten to adaptive", extra: `,"thinking":{"type":"enabled","budget_tokens":8000}`, wantAdaptive: true},
 		{name: "拒绝 between_tools 并返回 Haiku 错误说明", extra: `,"thinking":{"type":"between_tools"}`, wantErr: "claude-haiku-5-5 requires adaptive thinking; thinking.type=between_tools is unsupported"},
 		{name: "disabled thinking allowed at medium effort", extra: `,"thinking":{"type":"disabled"},"output_config":{"effort":"medium"}`},
 		{name: "disabled thinking allowed when effort omitted", extra: `,"thinking":{"type":"disabled"}`},
@@ -42,9 +44,13 @@ func TestValidateClaude55Request_Haiku55(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			body := []byte(prefix + tc.extra + "}")
-			err := validateClaude55Request(body, model)
+			out, err := validateClaude55Request(body, model)
 			if tc.wantErr == "" {
 				require.NoError(t, err)
+				if tc.wantAdaptive {
+					require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+					require.False(t, gjson.GetBytes(out, "thinking.budget_tokens").Exists())
+				}
 				return
 			}
 			require.Error(t, err)
@@ -52,4 +58,25 @@ func TestValidateClaude55Request_Haiku55(t *testing.T) {
 				"error %q should contain %q", err.Error(), tc.wantErr)
 		})
 	}
+}
+
+func TestClaude55EnabledThinkingRewrittenBeforeValidation(t *testing.T) {
+	for _, model := range []string{"claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "anthropic/claude-opus-5.5"} {
+		t.Run(model, func(t *testing.T) {
+			body := []byte(`{"model":"` + model + `","max_tokens":16000,"messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":8000}}`)
+			out, err := validateClaude55Request(body, model)
+			require.NoError(t, err)
+			require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+			require.False(t, gjson.GetBytes(out, "thinking.budget_tokens").Exists())
+			require.Equal(t, "enabled", gjson.GetBytes(body, "thinking.type").String())
+		})
+	}
+	unchanged := []byte(`{"model":"claude-sonnet-4-5","thinking":{"type":"enabled","budget_tokens":8000}}`)
+	out, err := validateClaude55Request(unchanged, "claude-sonnet-4-5")
+	require.NoError(t, err)
+	require.Equal(t, "enabled", gjson.GetBytes(out, "thinking.type").String())
+	require.Equal(t, int64(8000), gjson.GetBytes(out, "thinking.budget_tokens").Int())
+
+	_, err = validateClaude55Request([]byte(`{"model":"claude-opus-5-5","thinking":{"type":"disabled"}}`), "claude-opus-5-5")
+	require.ErrorContains(t, err, "requires adaptive thinking")
 }

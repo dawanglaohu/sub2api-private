@@ -125,6 +125,8 @@ func ResponsesToAnthropicRequest(req *ResponsesRequest) (*AnthropicRequest, erro
 		default:
 			return nil, fmt.Errorf("%s does not support reasoning effort %q; use low, medium, high, xhigh or max", req.Model, effort)
 		}
+		// Opus 5.5 没有 Sonnet 的 between_tools 或 Haiku 的 disabled 特判，
+		// 与这两家在常规 effort 下一样使用 adaptive，不带 budget_tokens。
 		out.Thinking = &AnthropicThinking{Type: "adaptive"}
 		out.OutputConfig = &AnthropicOutputConfig{Effort: effort}
 		return out, nil

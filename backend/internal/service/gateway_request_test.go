@@ -409,7 +409,8 @@ func TestSonnet55RetryKeepsBetweenToolsMode(t *testing.T) {
 		out := FilterThinkingBlocksForRetry(input, "claude-sonnet-5-5")
 		require.Equal(t, "between_tools", gjson.GetBytes(out, "thinking.type").String())
 		require.Equal(t, "low", gjson.GetBytes(out, "output_config.effort").String())
-		require.NoError(t, validateClaude55Request(out, "claude-sonnet-5-5"))
+		_, err := validateClaude55Request(out, "claude-sonnet-5-5")
+		require.NoError(t, err)
 	}
 }
 

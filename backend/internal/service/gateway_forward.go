@@ -105,9 +105,16 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		}
 	}
 	if account != nil && account.Platform == PlatformAnthropic {
-		if err := validateClaude55Request(parsed.Body.Bytes(), validationModel); err != nil {
+		original := parsed.Body.Bytes()
+		normalized, err := validateClaude55Request(original, validationModel)
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"type": "error", "error": gin.H{"type": "invalid_request_error", "message": err.Error()}})
 			return nil, err
+		}
+		if !bytes.Equal(original, normalized) {
+			if err := parsed.ReplaceBody(normalized); err != nil {
+				return nil, err
+			}
 		}
 	}
 	// Anthropic Fast is requested with speed=fast rather than OpenAI's

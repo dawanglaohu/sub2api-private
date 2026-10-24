@@ -82,6 +82,10 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 
 完整设计与代码位置见 `docs/聚蚁-sub2api-开发文档/图谱/任务/M8-T1.md`。
 
+## Anthropic 5.5 thinking 整流
+
+`gateway_request.go` 的 `validateClaude55Request` 在 5.5 校验 switch 之前，把 `thinking.type=enabled` 改成 `adaptive` 并删除 `thinking.budget_tokens`，再把新 body 写回 `ParsedRequest`。这是网关本地兼容老客户端，不是上游返回的 400。`responses_to_anthropic_request.go` 里 Opus 5.5 与 Sonnet/Haiku 的常规 effort 一样使用 adaptive。下次合上游时这两个文件不能整文件取 theirs，改写段要贴回去。代码位置见 `图谱/任务/M5-T2.md`。
+
 
 ## 铁律
 

@@ -41,9 +41,17 @@ func (s *GatewayService) ForwardCountTokens(ctx context.Context, c *gin.Context,
 		}
 	}
 	if account != nil && account.Platform == PlatformAnthropic {
-		if err := validateClaude55Request(parsed.Body.Bytes(), validationModel); err != nil {
+		original := parsed.Body.Bytes()
+		normalized, err := validateClaude55Request(original, validationModel)
+		if err != nil {
 			s.countTokensError(c, http.StatusBadRequest, "invalid_request_error", err.Error())
 			return err
+		}
+		if !bytes.Equal(original, normalized) {
+			if err := parsed.ReplaceBody(normalized); err != nil {
+				s.countTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to normalize request body")
+				return err
+			}
 		}
 	}
 
