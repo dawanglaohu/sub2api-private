@@ -14,11 +14,11 @@
 
 ## 当前状态(2026-10-24)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-9b007359`,自报版本 0.2.18**(= 上游 v0.2.18 + 全部二开,**无任何 Grok PR 私货**)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-3b684c1a`,自报版本 0.2.18**(= 上游 v0.2.18 + 全部二开 + Claude 5.5 thinking 整流,**无任何 Grok PR 私货**)
 - **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → R15 70 → **R23 70 个非 docs 文件**;docs/知识库另计)。三个禁用 workflow 的旧 Go 版本钉已对齐上游,不再计入净差异
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-3d45e8ce`(v0.2.17 + 全部二开,见 `/opt/sub2api-tool/previous-image`)。本版与 v0.2.17 的退款语义相同,且迁移 246 只改数据、不改表结构。再往前回到 `custom-db941888`(v0.2.16)前,仍须由新版收敛 pending/refunding,避免 deductionHeld 被旧版忽略
+- 回滚位:`custom-9b007359`(v0.2.18 合入提交,不含本次 thinking 整流,见 `/opt/sub2api-tool/previous-image`)。本次没有新迁移。再往前回到 `custom-db941888`(v0.2.16)前,仍须由新版收敛 pending/refunding,避免 deductionHeld 被旧版忽略
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(服务器实际保留 24 小时)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -85,6 +85,8 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 ## Anthropic 5.5 thinking 整流
 
 `gateway_request.go` 的 `validateClaude55Request` 在 5.5 校验 switch 之前，把 `thinking.type=enabled` 改成 `adaptive` 并删除 `thinking.budget_tokens`，再把新 body 写回 `ParsedRequest`。这是网关本地兼容老客户端，不是上游返回的 400。`responses_to_anthropic_request.go` 里 Opus 5.5 与 Sonnet/Haiku 的常规 effort 一样使用 adaptive。下次合上游时这两个文件不能整文件取 theirs，改写段要贴回去。代码位置见 `图谱/任务/M5-T2.md`。
+
+2026-10-24 17:42 UTC 已上线 `custom-3b684c1a`（GitHub run `40116616362`，摘要 `sha256:44cd3bb1d1fc759b49cf7b3e9b5bc51e5583eecd21d277e647a1566c7b994307`）。切换前备份 `/root/sub2api-backups/sub2api-20261024-173925.sql.gz`，300150712 bytes，SHA-256 `c275d11bbf4c0e7c3723f991b40f80092711a604b9b1a9585af2346d9b3aceda`。当时没有在途退款。回滚位 `custom-9b007359`。
 
 
 ## 铁律
