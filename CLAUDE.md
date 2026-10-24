@@ -12,13 +12,13 @@
 - 分支:`main` = 上游镜像(仅参考);**`custom` = 二开主分支(默认分支,一切开发在此)**
 - 上游 v* tags 需手工同步进私有仓库(**CI 自动合并不推 tag**,R17 实证;每次本地合并时补推,先 tag 后分支)
 
-## 当前状态(2026-10-18)
+## 当前状态(2026-10-24)
 
-- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-3d45e8ce`,自报版本 0.2.17**(= 上游 v0.2.17 + 全部二开,**无任何 Grok PR 私货**)
-- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → **R15 70 文件**;docs/知识库另计)
+- **生产镜像:`ghcr.io/dawanglaohu/sub2api:custom-9b007359`,自报版本 0.2.18**(= 上游 v0.2.18 + 全部二开,**无任何 Grok PR 私货**)
+- **#4043 已退役**(R9):上游 v0.1.155 用 #4094/#4188 系列重新实现了 billing 配额探测(QueryQuota 混合探测+rolling 24h 免费额度+本地账期统计),我们的 4043 保留全部换成上游原版。custom 相对上游 tag 的差异从此= 二开清单 + setting_handler_update.go(ext:),硬校验口径见 R8(R13 51 → R14 57 → R15 70 → **R23 70 个非 docs 文件**;docs/知识库另计)。三个禁用 workflow 的旧 Go 版本钉已对齐上游,不再计入净差异
 - ⚠️ **R15 起二开碰了上游功能代码**(监控页 V2:2 个后端文件 + ChannelStatusV2View 整页重写)。
   上游合并时**不能再无脑「二开清单取 ours」**,先读「监控页 V2 合并策略」那一节
-- 回滚位:`custom-db941888`(v0.2.16 + 全部二开,见 `/opt/sub2api-tool/previous-image`);执行前须按 M13-T2 核对 pending 退款扣减状态
+- 回滚位:`custom-3d45e8ce`(v0.2.17 + 全部二开,见 `/opt/sub2api-tool/previous-image`)。本版与 v0.2.17 的退款语义相同,且迁移 246 只改数据、不改表结构。再往前回到 `custom-db941888`(v0.2.16)前,仍须由新版收敛 pending/refunding,避免 deductionHeld 被旧版忽略
 - DB 备份:每次 switch 前跑 `bash /root/sub2api-deploy/backup.sh` → /root/sub2api-backups(服务器实际保留 24 小时)
 - 管理台设置(存 DB,更新永不丢):site_name=聚蚁、site_logo=/logo.svg、site_subtitle=品牌句、
   custom_menu_items=[兑换码购买 → `ext:https://pay.ldxp.cn/shop/NG0GBH88`]、home_content=空(走聚蚁落地页)
@@ -373,6 +373,14 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 - 切换前备份 `/root/sub2api-backups/sub2api-20261019-061715.sql.gz`，298310264 bytes，gzip/导出完成标记/校验和通过，详细 SHA-256 见 M13-T2；文件时间为 UTC。
 - 生产于 2026-10-18 23:19（America/Los_Angeles；UTC 2026-10-19 06:19）切换为 v0.2.17；回滚镜像 `custom-db941888`。四容器 healthy/restart0，公网健康/版本正确，六项公开品牌、外链与监控设置逐项不变，Logo 内容与源码一致。首页/登录页浏览器无警告或错误，聚蚁、蚁群、蜂窝、双哨兵保留，43 行启动日志无严重错误匹配。
 - 现网 OpenAI 账号均为 API-key，gpt-5.5 映射亦属于此路径，不受订阅退役影响；近 7 日 gpt-5.5 用量为 0，本次未改模型映射。切换前后 pending/refunding/held 均为 0。新版 pending 退款保留扣减并写 deductionHeld，旧版不识别，后续回滚须先由新版收敛在途退款，不能因无迁移就直接回滚。隔离烟测容器、匿名卷和网络均已清理。
+
+**R23(2026-10-24)升级到 v0.2.18，对齐 Go 1.27.3 并保留二开**
+- 精确上游 peeled `ac1b8f1271be0d674fa6f074403c1410f30a3a81` 合入 custom，合并提交 `9b00735975425d811b54b7e32f72c69479c282dd`。冲突只有三个已禁用的 workflow：二开侧还钉着 `go1.27.0`，上游升到 `go1.27.3`，按 R13 取上游。Dockerfile 与 `backend/go.mod` 随之变为 Go 1.27.3。
+- 监控 V2 七个文件上游本区间未改，`case "3d"`、`'3d'`、ext 与 `allowSelfUpdate=false` 仍在。AccountCapacityCell、AccountActionMenu 自动并入 `supportsAccountQuota`，品牌色保留；GroupsView 并入按平台默认开启生图，主题色勾选保留。非 docs 净差异从 73 个收到 70 个，少掉的就是那三个 workflow。
+- 前端 frozen-lockfile 后，定向测试 13 个文件 218 项通过，其中包含 channel-monitor-v2；`pnpm run build` 通过 i18n 3 项、vue-tsc 与 Vite 1091 模块。本地未跑 Go 全套测试。先推 tag `v0.2.18` 再推 custom。GitHub run `40068018841` 成功，日志 `version=0.2.18 sha8=9b007359`。`custom-9b007359` 与 `v0.2.18-custom` 的 manifest 均为 `sha256:dfedbc31d76cf70ca6198bc20af1b4e55e539d6e016bb0f0f8fcde9c3f49bf13`。
+- 镜像内 `strings` 读到 `0.2.18`，并含 juyi-float-header、JuyiAntSentry、JuyiSwarmField、ModelStatusCard、jy-count、pointer-events-none fixed。隔离烟测库与生产卷不同；打开监控开关后 24h/3d/7d 桶为 300/900/3600 秒，非法范围 400。迁移 `246_enable_gemini_image_generation_groups.sql` 已记录。临时管理员声明门返回 423，未代为接受。
+- 切换前备份 `/root/sub2api-backups/sub2api-20261024-062948.sql.gz`，300471941 bytes，gzip 与 PostgreSQL dump complete 通过，SHA-256 `a72a3371fbed8446168e5dba93b5c78b2e7299a88cd5d23ece87334a8d04eabc`。切换前 REFUND_PENDING、REFUNDING、pending deductionHeld 与被关闭生图的 gemini/antigravity 分组都是 0。
+- 生产于 2026-10-23 23:47（America/Los_Angeles；UTC 2026-10-24 06:47）切换为 `custom-9b007359`/0.2.18，回滚位 `custom-3d45e8ce`。四容器健康、重启计数 0，公网版本 0.2.18，站名、Logo、品牌句、兑换码外链、home_content 与监控模式保持原值。Logo SHA-256 与源码 `fc96c72ef24385617cde9b086c2ce040703bfa03c1bbb3079cfcb2e53dd82236` 一致。首页与登录页真实浏览器无控制台警告或错误。隔离烟测栈已清理。迁移 246 只把 gemini/antigravity 的生图开关从关改为开，不改表；本次生产没有这样的分组，回滚到 v0.2.17 不需要还原 schema。再往前回到 v0.2.16 时，仍要先收敛在途退款。
 
 ## 设计决策(颜色边界,回答"为什么有些颜色不跟主题")
 
