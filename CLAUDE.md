@@ -84,7 +84,7 @@ R15 起我们改了 `channel_monitor_v2.go` 的**业务逻辑**,并重写了 `Ch
 
 ## Anthropic 5.5 thinking 整流
 
-`gateway_request.go` 的 `validateClaude55Request` 在 5.5 校验 switch 之前，把 `thinking.type=enabled` 改成 `adaptive` 并删除 `thinking.budget_tokens`，再把新 body 写回 `ParsedRequest`。这是网关本地兼容老客户端，不是上游返回的 400。`responses_to_anthropic_request.go` 里 Opus 5.5 与 Sonnet/Haiku 的常规 effort 一样使用 adaptive。下次合上游时这两个文件不能整文件取 theirs，改写段要贴回去。代码位置见 `图谱/任务/M5-T2.md`。
+`gateway_request.go` 的 `validateClaude55Request` 在 5.5 校验 switch 之前整流 thinking，再把新 body 写回 `ParsedRequest`：`enabled`→`adaptive` 并删除 `budget_tokens`；opus 的 `disabled`→`adaptive`；sonnet 的 `disabled`→`between_tools`（effort 为 xhigh/max 时改 `adaptive`）；haiku 的 `disabled` 在 high 及以下合法，不改。这是网关本地兼容老客户端，不是上游返回的 400。`responses_to_anthropic_request.go` 里 Opus 5.5 与 Sonnet/Haiku 的常规 effort 一样使用 adaptive。下次合上游时这些文件不能整文件取 theirs，改写段要贴回去。代码位置见 `图谱/任务/M5-T2.md`。
 
 2026-10-24 17:42 UTC 已上线 `custom-3b684c1a`（GitHub run `40116616362`，摘要 `sha256:44cd3bb1d1fc759b49cf7b3e9b5bc51e5583eecd21d277e647a1566c7b994307`）。切换前备份 `/root/sub2api-backups/sub2api-20261024-173925.sql.gz`，300150712 bytes，SHA-256 `c275d11bbf4c0e7c3723f991b40f80092711a604b9b1a9585af2346d9b3aceda`。当时没有在途退款。回滚位 `custom-9b007359`。
 

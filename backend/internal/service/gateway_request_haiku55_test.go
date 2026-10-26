@@ -77,6 +77,60 @@ func TestClaude55EnabledThinkingRewrittenBeforeValidation(t *testing.T) {
 	require.Equal(t, "enabled", gjson.GetBytes(out, "thinking.type").String())
 	require.Equal(t, int64(8000), gjson.GetBytes(out, "thinking.budget_tokens").Int())
 
-	_, err = validateClaude55Request([]byte(`{"model":"claude-opus-5-5","thinking":{"type":"disabled"}}`), "claude-opus-5-5")
-	require.ErrorContains(t, err, "requires adaptive thinking")
+	out, err = validateClaude55Request([]byte(`{"model":"claude-opus-5-5","thinking":{"type":"disabled"}}`), "claude-opus-5-5")
+	require.NoError(t, err)
+	require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+}
+
+func TestClaude55DisabledThinkingRewrittenBeforeValidation(t *testing.T) {
+	t.Run("opus disabled becomes adaptive", func(t *testing.T) {
+		body := []byte(`{"model":"claude-opus-5-5","thinking":{"type":"disabled","budget_tokens":8000}}`)
+		out, err := validateClaude55Request(body, "claude-opus-5-5")
+		require.NoError(t, err)
+		require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+		require.False(t, gjson.GetBytes(out, "thinking.budget_tokens").Exists())
+		require.Equal(t, "disabled", gjson.GetBytes(body, "thinking.type").String())
+	})
+	t.Run("opus dotted id disabled becomes adaptive", func(t *testing.T) {
+		body := []byte(`{"model":"anthropic/claude-opus-5.5","thinking":{"type":"disabled"}}`)
+		out, err := validateClaude55Request(body, "anthropic/claude-opus-5.5")
+		require.NoError(t, err)
+		require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+	})
+	t.Run("sonnet disabled becomes between_tools", func(t *testing.T) {
+		body := []byte(`{"model":"claude-sonnet-5-5","thinking":{"type":"disabled","budget_tokens":8000,"display":"summarized"}}`)
+		out, err := validateClaude55Request(body, "claude-sonnet-5-5")
+		require.NoError(t, err)
+		require.Equal(t, "between_tools", gjson.GetBytes(out, "thinking.type").String())
+		require.False(t, gjson.GetBytes(out, "thinking.budget_tokens").Exists())
+		require.False(t, gjson.GetBytes(out, "thinking.display").Exists())
+	})
+	t.Run("sonnet disabled at xhigh becomes adaptive", func(t *testing.T) {
+		body := []byte(`{"model":"claude-sonnet-5-5","thinking":{"type":"disabled"},"output_config":{"effort":"xhigh"}}`)
+		out, err := validateClaude55Request(body, "claude-sonnet-5-5")
+		require.NoError(t, err)
+		require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+	})
+	t.Run("sonnet disabled at max becomes adaptive", func(t *testing.T) {
+		body := []byte(`{"model":"claude-sonnet-5-5","thinking":{"type":"disabled"},"output_config":{"effort":"max"}}`)
+		out, err := validateClaude55Request(body, "claude-sonnet-5-5")
+		require.NoError(t, err)
+		require.Equal(t, "adaptive", gjson.GetBytes(out, "thinking.type").String())
+	})
+	t.Run("haiku disabled stays disabled", func(t *testing.T) {
+		body := []byte(`{"model":"claude-haiku-5-5","thinking":{"type":"disabled"},"output_config":{"effort":"medium"}}`)
+		out, err := validateClaude55Request(body, "claude-haiku-5-5")
+		require.NoError(t, err)
+		require.Equal(t, "disabled", gjson.GetBytes(out, "thinking.type").String())
+	})
+	t.Run("haiku disabled at xhigh still rejected", func(t *testing.T) {
+		_, err := validateClaude55Request([]byte(`{"model":"claude-haiku-5-5","thinking":{"type":"disabled"},"output_config":{"effort":"xhigh"}}`), "claude-haiku-5-5")
+		require.ErrorContains(t, err, "supports only low, medium or high effort")
+	})
+	t.Run("non 5.5 disabled unchanged", func(t *testing.T) {
+		body := []byte(`{"model":"claude-sonnet-4-5","thinking":{"type":"disabled"}}`)
+		out, err := validateClaude55Request(body, "claude-sonnet-4-5")
+		require.NoError(t, err)
+		require.Equal(t, "disabled", gjson.GetBytes(out, "thinking.type").String())
+	})
 }

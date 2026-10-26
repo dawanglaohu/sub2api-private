@@ -581,20 +581,36 @@ func validateClaude55Request(body []byte, model string) ([]byte, error) {
 	}
 	isSonnet55 := claude.IsSonnet55(model)
 	isHaiku55 := claude.IsHaiku55(model)
-	// 老客户端仍发 thinking.type=enabled 加 budget_tokens。5.5 家族上游不接受
-	// enabled，在这里静默改成 adaptive 并丢掉 budget，而不是在尚未建上游请求时 400。
-	if gjson.GetBytes(body, "thinking.type").String() == "enabled" {
-		rewritten, err := sjson.SetBytes(body, "thinking.type", "adaptive")
-		if err != nil {
-			return body, err
-		}
-		rewritten, err = sjson.DeleteBytes(rewritten, "thinking.budget_tokens")
+	// 老客户端仍发 thinking.type=enabled（带 budget_tokens）或 disabled。
+	// 5.5 家族里 opus 不接受这两种；sonnet 不接受 disabled（应改 between_tools）；
+	// haiku 的 disabled 在 high 及以下合法，不动。改写后才进入原校验，避免本地 400。
+	thinkingType := gjson.GetBytes(body, "thinking.type").String()
+	switch thinkingType {
+	case "enabled":
+		rewritten, err := rewriteClaude55ThinkingType(body, "adaptive", "thinking.budget_tokens")
 		if err != nil {
 			return body, err
 		}
 		body = rewritten
+	case "disabled":
+		if !isHaiku55 {
+			nextType := "adaptive"
+			drop := []string{"thinking.budget_tokens"}
+			if isSonnet55 {
+				effort := gjson.GetBytes(body, "output_config.effort").String()
+				if effort != "xhigh" && effort != "max" {
+					nextType = "between_tools"
+					drop = append(drop, "thinking.display", "thinking.block_binding")
+				}
+			}
+			rewritten, err := rewriteClaude55ThinkingType(body, nextType, drop...)
+			if err != nil {
+				return body, err
+			}
+			body = rewritten
+		}
 	}
-	thinkingType := gjson.GetBytes(body, "thinking.type").String()
+	thinkingType = gjson.GetBytes(body, "thinking.type").String()
 	switch thinkingType {
 	case "disabled", "enabled":
 		if isHaiku55 {
@@ -665,6 +681,20 @@ func validateClaude55Request(body []byte, model string) ([]byte, error) {
 		}
 	}
 	return body, nil
+}
+
+func rewriteClaude55ThinkingType(body []byte, thinkingType string, dropFields ...string) ([]byte, error) {
+	rewritten, err := sjson.SetBytes(body, "thinking.type", thinkingType)
+	if err != nil {
+		return body, err
+	}
+	for _, field := range dropFields {
+		rewritten, err = sjson.DeleteBytes(rewritten, field)
+		if err != nil {
+			return body, err
+		}
+	}
+	return rewritten, nil
 }
 
 // FilterThinkingBlocks removes thinking blocks from request body
